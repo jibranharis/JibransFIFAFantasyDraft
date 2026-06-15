@@ -34,6 +34,7 @@ function Toasts({ toasts }) {
 function Sidebar({ page, setPage }) {
   const { user, logout } = useAuth()
   const navItems = [
+    { id: 'home', icon: '🏠', label: 'Home' },
     { id: 'predictions', icon: '⚽', label: 'Predictions' },
     { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
     { id: 'arenas', icon: '🏟️', label: 'Arenas' },
@@ -44,7 +45,7 @@ function Sidebar({ page, setPage }) {
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <span>🏆</span> Jibran's Draft
+        <span>🏆</span> Fútbol is Life
       </div>
       <nav className="sidebar-nav">
         {navItems.map(item => (
@@ -106,7 +107,7 @@ function AuthPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">🏆 Jibran's FIFA Fantasy Draft</div>
+        <div className="auth-logo">🏆 Fútbol is Life</div>
         <div className="auth-sub">World Cup 2026 Predictions</div>
         <form onSubmit={submit}>
           {mode === 'register' && (
@@ -134,6 +135,119 @@ function AuthPage() {
           ) : (
             <>Already have an account? <button onClick={() => setMode('login')}>Sign in</button></>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Home page
+function HomePage() {
+  const { user } = useAuth()
+  
+  const [stats, setStats] = useState({ rank: 62, totalPoints: 0, exactScores: 0, predictions: 29 })
+  const [arenas, setArenas] = useState([])
+  const [topPredictors, setTopPredictors] = useState([])
+  
+  useEffect(() => {
+    api('/api/arenas').then(r => setArenas((r.arenas || r).slice(0, 3))).catch(() => {})
+    api('/api/leaderboard').then(r => {
+      const lb = r.leaderboard || r;
+      setTopPredictors(lb.slice(0, 5))
+      const me = lb.find(p => p.userId === user?.id);
+      if (me) {
+        setStats({ rank: me.rank || 62, totalPoints: me.totalPoints || 0, exactScores: me.exactScores || 0, predictions: me.correctOutcomes || 29 })
+      }
+    }).catch(() => {})
+  }, [user?.id])
+
+  // Timer logic (mocked for visuals)
+  const [timeLeft, setTimeLeft] = useState({ days: 2, hours: 14, minutes: 36, seconds: 59 })
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        let { days, hours, minutes, seconds } = prev
+        if (seconds > 0) seconds--
+        else {
+          seconds = 59
+          if (minutes > 0) minutes--
+          else {
+            minutes = 59
+            if (hours > 0) hours--
+            else {
+              hours = 23
+              if (days > 0) days--
+            }
+          }
+        }
+        return { days, hours, minutes, seconds }
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const pad = n => n.toString().padStart(2, '0')
+
+  return (
+    <div className="page-content">
+      <div className="welcome-banner" style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
+          Welcome back, {user?.displayName || 'Player'}
+        </h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Ready for the next match?</p>
+      </div>
+
+      <div className="countdown-card card" style={{ marginBottom: 32, textAlign: 'center', padding: '40px' }}>
+        <h3 style={{ color: 'var(--primary)', marginBottom: 16, fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', letterSpacing: 2, fontSize: '1rem' }}>Next Round Locks In</h3>
+        <div style={{ fontSize: '3rem', fontWeight: 900, fontFamily: 'Outfit, sans-serif', display: 'flex', justifyContent: 'center', gap: 16 }}>
+          <span>{pad(timeLeft.days)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Days</span></span><span style={{ color: 'var(--surface-border)' }}>:</span>
+          <span>{pad(timeLeft.hours)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Hours</span></span><span style={{ color: 'var(--surface-border)' }}>:</span>
+          <span>{pad(timeLeft.minutes)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Mins</span></span><span style={{ color: 'var(--surface-border)' }}>:</span>
+          <span>{pad(timeLeft.seconds)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Secs</span></span>
+        </div>
+      </div>
+
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24, marginBottom: 40 }}>
+        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Global Rank</div>
+          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900, color: 'var(--primary)' }}>#{stats.rank}</div>
+        </div>
+        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Total Points</div>
+          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900 }}>{stats.totalPoints}</div>
+        </div>
+        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Exact Scores</div>
+          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900 }}>{stats.exactScores}</div>
+        </div>
+        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Predictions</div>
+          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900 }}>{stats.predictions}</div>
+        </div>
+      </div>
+
+      <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+        <div className="left-side card" style={{ padding: 24, marginBottom: 0 }}>
+          <h3 style={{ marginBottom: 20, fontFamily: 'Outfit, sans-serif', fontSize: '1.4rem' }}>Your Arenas</h3>
+          {arenas.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No arenas yet.</div>
+          ) : arenas.map(a => (
+            <div key={a.id} className="arena-row" style={{ padding: '16px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{a.name}</span>
+              <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>{a.memberCount} members</span>
+            </div>
+          ))}
+        </div>
+        <div className="right-side card" style={{ padding: 24, marginBottom: 0 }}>
+          <h3 style={{ marginBottom: 20, fontFamily: 'Outfit, sans-serif', fontSize: '1.4rem' }}>Top Predictors</h3>
+          {topPredictors.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No predictors yet.</div>
+          ) : topPredictors.map((p, i) => (
+            <div key={p.userId} className="predictor-row" style={{ padding: '16px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600 }}><strong style={{ color: 'var(--text-muted)', marginRight: 12 }}>#{i+1}</strong> {p.username}</span>
+              <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{p.totalPoints} pts</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -617,7 +731,7 @@ function AdminPage() {
 export default function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [page, setPage] = useState('predictions')
+  const [page, setPage] = useState('home')
   const [toasts, setToasts] = useState([])
 
   const toast = useCallback((type, title, message) => {
@@ -638,8 +752,8 @@ export default function App() {
 
   if (authLoading) return <div className="loading-center" style={{ height: '100vh' }}><div className="spinner" /></div>
 
-  const pages = { predictions: PredictionsPage, leaderboard: LeaderboardPage, matches: MatchesPage, arenas: ArenasPage, admin: AdminPage }
-  const PageComponent = pages[page] || PredictionsPage
+  const pages = { home: HomePage, predictions: PredictionsPage, leaderboard: LeaderboardPage, matches: MatchesPage, arenas: ArenasPage, admin: AdminPage }
+  const PageComponent = pages[page] || HomePage
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

@@ -108,33 +108,94 @@ function seed() {
     if (!rounds.get(x => x.slug === r.slug)) rounds.insert(r);
   }
 
-  // Matches (World Cup 2026 Group Stage)
-  if (matches.all().length === 0) {
-    let id = 1;
-    const ms = [
-      { home_team:'Mexico',      away_team:'Ecuador',      home_flag:'🇲🇽', away_flag:'🇪🇨', stage:'group_stage', match_day:1, scheduled_at:'2026-06-11T23:00:00.000Z', group_name:'A' },
-      { home_team:'USA',         away_team:'Canada',       home_flag:'🇺🇸', away_flag:'🇨🇦', stage:'group_stage', match_day:1, scheduled_at:'2026-06-12T02:00:00.000Z', group_name:'B' },
-      { home_team:'Argentina',   away_team:'Nigeria',      home_flag:'🇦🇷', away_flag:'🇳🇬', stage:'group_stage', match_day:1, scheduled_at:'2026-06-12T18:00:00.000Z', group_name:'C' },
-      { home_team:'Brazil',      away_team:'Germany',      home_flag:'🇧🇷', away_flag:'🇩🇪', stage:'group_stage', match_day:1, scheduled_at:'2026-06-12T21:00:00.000Z', group_name:'D' },
-      { home_team:'France',      away_team:'Belgium',      home_flag:'🇫🇷', away_flag:'🇧🇪', stage:'group_stage', match_day:1, scheduled_at:'2026-06-13T18:00:00.000Z', group_name:'E' },
-      { home_team:'Spain',       away_team:'Portugal',     home_flag:'🇪🇸', away_flag:'🇵🇹', stage:'group_stage', match_day:1, scheduled_at:'2026-06-13T21:00:00.000Z', group_name:'F' },
-      { home_team:'England',     away_team:'Netherlands',  home_flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', away_flag:'🇳🇱', stage:'group_stage', match_day:1, scheduled_at:'2026-06-14T18:00:00.000Z', group_name:'G' },
-      { home_team:'Japan',       away_team:'South Korea',  home_flag:'🇯🇵', away_flag:'🇰🇷', stage:'group_stage', match_day:1, scheduled_at:'2026-06-14T21:00:00.000Z', group_name:'H' },
-      { home_team:'Ivory Coast', away_team:'Ecuador',      home_flag:'🇨🇮', away_flag:'🇪🇨', stage:'group_stage', match_day:1, scheduled_at:'2026-06-14T23:00:00.000Z', group_name:'A' },
-      { home_team:'Morocco',     away_team:'Senegal',      home_flag:'🇲🇦', away_flag:'🇸🇳', stage:'group_stage', match_day:1, scheduled_at:'2026-06-15T18:00:00.000Z', group_name:'I' },
-      { home_team:'Colombia',    away_team:'Venezuela',    home_flag:'🇨🇴', away_flag:'🇻🇪', stage:'group_stage', match_day:1, scheduled_at:'2026-06-16T18:00:00.000Z', group_name:'B' },
-      { home_team:'Ecuador',     away_team:'USA',          home_flag:'🇪🇨', away_flag:'🇺🇸', stage:'group_stage', match_day:2, scheduled_at:'2026-06-19T18:00:00.000Z', group_name:'A' },
-      { home_team:'Canada',      away_team:'Argentina',    home_flag:'🇨🇦', away_flag:'🇦🇷', stage:'group_stage', match_day:2, scheduled_at:'2026-06-19T21:00:00.000Z', group_name:'C' },
-      { home_team:'Germany',     away_team:'France',       home_flag:'🇩🇪', away_flag:'🇫🇷', stage:'group_stage', match_day:2, scheduled_at:'2026-06-20T18:00:00.000Z', group_name:'D' },
-      { home_team:'Portugal',    away_team:'England',      home_flag:'🇵🇹', away_flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', stage:'group_stage', match_day:2, scheduled_at:'2026-06-20T21:00:00.000Z', group_name:'F' },
-      { home_team:'Netherlands', away_team:'Japan',        home_flag:'🇳🇱', away_flag:'🇯🇵', stage:'group_stage', match_day:2, scheduled_at:'2026-06-21T18:00:00.000Z', group_name:'G' },
-      { home_team:'Senegal',     away_team:'Australia',    home_flag:'🇸🇳', away_flag:'🇦🇺', stage:'group_stage', match_day:2, scheduled_at:'2026-06-21T21:00:00.000Z', group_name:'I' },
-      { home_team:'South Korea', away_team:'Brazil',       home_flag:'🇰🇷', away_flag:'🇧🇷', stage:'group_stage', match_day:2, scheduled_at:'2026-06-22T18:00:00.000Z', group_name:'H' },
-    ];
-    for (const m of ms) {
-      matches.insert({ id: id++, status: 'scheduled', home_score: null, away_score: null, ...m });
+  // Matches (World Cup 2026)
+  if (matches.all().length < 104) {
+    // Delete old demo matches
+    matches.delete(() => true);
+    const defaultMatches = [];
+    let matchId = 1;
+    let baseDate = new Date('2026-06-11T12:00:00Z'); // World Cup start date
+
+    // 1. Group Stage (12 Groups, 6 matches each = 72 matches)
+    const groups = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+    for (const group of groups) {
+      for (let day = 1; day <= 3; day++) {
+        for (let m = 0; m < 2; m++) {
+          const mDate = new Date(baseDate);
+          mDate.setDate(mDate.getDate() + day - 1);
+          mDate.setHours(12 + m * 3);
+          
+          defaultMatches.push({
+            id: matchId++,
+            home_team: `Team ${m * 2 + 1} (${group})`,
+            away_team: `Team ${m * 2 + 2} (${group})`,
+            home_flag: '🌍',
+            away_flag: '🌍',
+            stage: 'group_stage',
+            match_day: day,
+            scheduled_at: mDate.toISOString(),
+            status: 'scheduled',
+            home_score: null,
+            away_score: null,
+            group_name: group,
+          });
+        }
+      }
     }
-    console.log(`✅ ${ms.length} matches seeded`);
+
+    // 2. Knockout Stage Setup
+    const knockoutStages = [
+      { name: 'Round of 32', count: 16, startDay: 15 },
+      { name: 'Round of 16', count: 8, startDay: 20 },
+      { name: 'Quarter-finals', count: 4, startDay: 25 },
+      { name: 'Semi-finals', count: 2, startDay: 30 },
+      { name: 'Third place', count: 1, startDay: 33 },
+      { name: 'Final', count: 1, startDay: 34 }
+    ];
+
+    for (const stage of knockoutStages) {
+      for (let i = 0; i < stage.count; i++) {
+        const mDate = new Date(baseDate);
+        mDate.setDate(mDate.getDate() + stage.startDay + Math.floor(i / 2));
+        mDate.setHours(12 + (i % 2) * 4);
+
+        defaultMatches.push({
+          id: matchId++,
+          home_team: `TBD Home ${i+1}`,
+          away_team: `TBD Away ${i+1}`,
+          home_flag: '❓',
+          away_flag: '❓',
+          stage: stage.name,
+          match_day: null,
+          scheduled_at: mDate.toISOString(),
+          status: 'scheduled',
+          home_score: null,
+          away_score: null,
+          group_name: null,
+        });
+      }
+    }
+
+    // Override the first match to be Mexico vs Ecuador
+    if (defaultMatches[0]) {
+      defaultMatches[0].home_team = 'Mexico';
+      defaultMatches[0].home_flag = '🇲🇽';
+      defaultMatches[0].away_team = 'Ecuador';
+      defaultMatches[0].away_flag = '🇪🇨';
+    }
+
+    // Simulate some completed matches on Day 1 for the dashboard to look alive
+    for (let i = 0; i < 4; i++) {
+      defaultMatches[i].status = 'completed';
+      defaultMatches[i].home_score = Math.floor(Math.random() * 4);
+      defaultMatches[i].away_score = Math.floor(Math.random() * 4);
+    }
+
+    for (const match of defaultMatches) {
+      matches.insert(match);
+      if (match.status === 'completed') calculatePoints(match.id);
+    }
+    console.log(`✅ ${defaultMatches.length} matches seeded`);
   }
 }
 
