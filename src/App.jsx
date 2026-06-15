@@ -997,11 +997,11 @@ function ArenasPage() {
 
   const join = async () => {
     try {
-      const data = const { data: arena } = await supabase.from('arenas').select('id').eq('code', joinCode.trim().toUpperCase()).single()
+      const { data: arena } = await supabase.from('arenas').select('id, name').eq('code', joinCode.trim().toUpperCase()).single()
       if (!arena) throw new Error('Arena not found')
       const { error } = await supabase.from('arena_members').insert({ arena_id: arena.id, user_id: user.id })
       if (error) throw error
-      toast('success', `Joined ${data.arenaName}! 🏟️`)
+      toast('success', `Joined ${arena.name}! 🏟️`)
       setJoinCode(''); load()
     } catch (err) {
       toast('error', 'Could not join', err.message)
