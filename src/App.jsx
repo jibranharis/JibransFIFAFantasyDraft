@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react'
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom'
 import './design.css'
 
 // ============================================================
@@ -994,8 +994,16 @@ function ArenasPage() {
             {a.isMember && <span style={{ fontSize: '0.625rem', background: 'rgba(34,197,94,0.2)', color: 'hsl(142 71% 45%)', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(34,197,94,0.3)' }}>✓ Member</span>}
             {a.isMember && a.inviteCode && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 4 }}>Invite Code</div>
-                <code style={{ display: 'block', textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: 6, color: 'hsl(var(--primary))', fontFamily: 'monospace', letterSpacing: '0.2em', fontWeight: 700 }}>{a.inviteCode}</code>
+                <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 4 }}>Invite Link</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <code style={{ flex: 1, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: 6, color: 'hsl(var(--primary))', fontFamily: 'monospace', letterSpacing: '0.05em', fontWeight: 700 }}>
+                    {window.location.origin}/join/{a.inviteCode}
+                  </code>
+                  <button className="btn-ghost" style={{ padding: '8px', width: 'auto' }} onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/join/${a.inviteCode}`);
+                    toast('success', 'Copied to clipboard!');
+                  }}>Copy</button>
+                </div>
               </div>
             )}
           </div>
@@ -1012,19 +1020,49 @@ function ArenasPage() {
 }
 
 // ============================================================
+// Join Arena Route Handle
+// ============================================================
+function JoinArenaPage() {
+  const { code } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (code) {
+      api(`/api/arenas/join/${code.trim().toUpperCase()}`, { method: 'POST' })
+        .then(data => {
+          toast('success', `Joined ${data.arenaName}! 🏟️`);
+        })
+        .catch(err => {
+          toast('error', 'Could not join', err.message);
+        })
+        .finally(() => {
+          navigate('/arenas');
+        });
+    } else {
+      navigate('/arenas');
+    }
+  }, [code, navigate, toast]);
+
+  return <div className="spinner-screen"><div className="spinner" /></div>;
+}
+
+// ============================================================
 // Admin page
 // ============================================================
 function AdminPage() {
   const [matches, setMatches] = useState([])
   const [rounds, setRounds] = useState([])
+  const [allPredictions, setAllPredictions] = useState([])
   const [activeTab, setActiveTab] = useState('rounds')
   const [resultInputs, setResultInputs] = useState({})
   const { toast } = useToast()
 
   const load = () => Promise.all([
     api('/api/matches').then(r => r.matches || r),
-    api('/api/rounds').then(r => r.rounds || r)
-  ]).then(([m, r]) => { setMatches(m); setRounds(r) })
+    api('/api/rounds').then(r => r.rounds || r),
+    api('/api/admin/predictions').then(r => r.users || [])
+  ]).then(([m, r, p]) => { setMatches(m); setRounds(r); setAllPredictions(p); })
   useEffect(() => { load() }, [])
 
   const setMatchStatus = async (matchId, status) => {
@@ -1072,6 +1110,7 @@ function AdminPage() {
       <div className="stage-tabs" style={{ marginBottom: 24 }}>
         <button className={`stage-tab ${activeTab === 'rounds' ? 'active' : ''}`} onClick={() => setActiveTab('rounds')}>Rounds</button>
         <button className={`stage-tab ${activeTab === 'matches' ? 'active' : ''}`} onClick={() => setActiveTab('matches')}>Matches</button>
+        <button className={`stage-tab ${activeTab === 'predictions' ? 'active' : ''}`} onClick={() => setActiveTab('predictions')}>User Predictions</button>
       </div>
 
       {activeTab === 'rounds' && (
@@ -1127,6 +1166,44 @@ function AdminPage() {
           ))}
         </div>
       )}
+
+      {activeTab === 'predictions' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {allPredictions.length === 0 ? (
+            <div className="empty-state">No predictions found.</div>
+          ) : allPredictions.map(u => (
+            <div key={u.userId} className="card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 12 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>
+                  {u.username.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))' }}>{u.username}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{u.email} • {u.predictions.length} predictions</div>
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {u.predictions.map(p => (
+                  <div key={p.id} style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--muted-foreground))', marginBottom: 4 }}>
+                      {getAbbr(p.match?.homeTeam)} vs {getAbbr(p.match?.awayTeam)}
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', fontFamily: 'Outfit, sans-serif' }}>
+                      {p.homeScore} – {p.awayScore}
+                    </div>
+                    {p.points !== null && (
+                      <div style={{ fontSize: '0.75rem', color: p.points > 0 ? 'hsl(142 71% 45%)' : '#f87171', fontWeight: 700, marginTop: 4 }}>
+                        +{p.points} pts
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1147,6 +1224,7 @@ function AppLayout() {
           <Route path="/groups"      element={<GroupsPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/arenas"      element={<ArenasPage />} />
+          <Route path="/join/:code"  element={<JoinArenaPage />} />
           <Route path="/my-results"  element={<MyResultsPage />} />
           <Route path="/admin"       element={<AdminPage />} />
           <Route path="*"            element={<Navigate to="/" />} />

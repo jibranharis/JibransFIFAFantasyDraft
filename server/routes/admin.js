@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { matches, predictions, rounds, arenas, arenaMembers, getRoundSlug } from '../db.js';
+import { matches, predictions, rounds, arenas, arenaMembers, users, getRoundSlug } from '../db.js';
 
 const router = Router();
 
@@ -166,6 +166,47 @@ router.post('/arenas', (req, res) => {
       createdAt: arena.created_at,
     },
   });
+});
+// ── GET /admin/predictions ───────────────────────────────────────────────────
+router.get('/predictions', (req, res) => {
+  const allUsers = users.all();
+  const allMatches = matches.all();
+  const allPredictions = predictions.all();
+
+  // Map matches for quick lookup
+  const matchMap = {};
+  for (const m of allMatches) {
+    matchMap[m.id] = { homeTeam: m.home_team, awayTeam: m.away_team, matchDay: m.match_day, stage: m.stage, status: m.status };
+  }
+
+  // Map predictions by user
+  const userPreds = {};
+  for (const u of allUsers) {
+    userPreds[u.id] = {
+      userId: u.id,
+      username: u.display_name,
+      email: u.email,
+      predictions: []
+    };
+  }
+
+  for (const p of allPredictions) {
+    if (userPreds[p.user_id]) {
+      userPreds[p.user_id].predictions.push({
+        id: p.id,
+        matchId: p.match_id,
+        homeScore: p.home_score,
+        awayScore: p.away_score,
+        points: p.points,
+        match: matchMap[p.match_id]
+      });
+    }
+  }
+
+  // Only return users who have made at least one prediction
+  const activeUsers = Object.values(userPreds).filter(u => u.predictions.length > 0);
+
+  return res.json({ users: activeUsers });
 });
 
 export default router;
