@@ -665,11 +665,20 @@ function MatchesPage() {
 // ============================================================
 // Predictions page
 // ============================================================
+const ROUNDS = [
+  { slug: 'group_stage_1', name: 'Group Stage (MD1)' },
+  { slug: 'group_stage_2', name: 'Group Stage (MD2+3)' },
+  { slug: 'round_of_32', name: 'Round of 32' },
+  { slug: 'round_of_16', name: 'Round of 16' },
+  { slug: 'quarterfinals', name: 'Quarterfinals' },
+  { slug: 'semifinals', name: 'Semifinals' },
+  { slug: 'final', name: 'Final' }
+]
+
 function PredictionsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [matches, setMatches] = useState([])
-  const [rounds, setRounds] = useState([])
   const [activeRound, setActiveRound] = useState('group_stage_1')
   const [scores, setScores] = useState({})
   const [saving, setSaving] = useState({})
@@ -677,11 +686,18 @@ function PredictionsPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => (r.data || []).map(formatMatch)),
-      Promise.resolve([])
-    ]).then(([m, r]) => {
+      supabase.from('matches').select('*').order('scheduled_at', { ascending: true }),
+      supabase.from('predictions').select('*').eq('user_id', user?.id)
+    ]).then(([mRes, pRes]) => {
+      const pMap = {}
+      ;(pRes.data || []).forEach(p => { pMap[p.match_id] = p })
+
+      const m = (mRes.data || []).map(formatMatch).map(match => ({
+        ...match,
+        userPrediction: pMap[match.id] ? { homeScore: pMap[match.id].home_score, awayScore: pMap[match.id].away_score } : null
+      }))
       setMatches(m)
-      setRounds(r)
+      
       const init = {}
       m.forEach(match => {
         if (match.userPrediction) {
@@ -690,7 +706,7 @@ function PredictionsPage() {
       })
       setScores(init)
     }).finally(() => setLoading(false))
-  }, [])
+  }, [user?.id])
 
   const roundMatches = matches.filter(m => {
     if (activeRound === 'group_stage_1') return m.stage === 'group_stage' && m.matchDay === 1
@@ -698,8 +714,7 @@ function PredictionsPage() {
     return m.stage === activeRound
   })
 
-  const currentRound = rounds.find(r => r.slug === activeRound)
-  const isLocked = currentRound?.isLocked && !user?.isAdmin
+  const currentRound = ROUNDS.find(r => r.slug === activeRound)
 
   const saveScore = async (matchId) => {
     const s = scores[matchId]
@@ -731,15 +746,15 @@ function PredictionsPage() {
       </div>
 
       {/* Round tabs */}
-      <div className="stage-tabs" style={{ marginBottom: 24 }}>
-        {rounds.slice(0, 6).map(r => (
+      <div className="stage-tabs" style={{ marginBottom: 24, overflowX: 'auto', whiteSpace: 'nowrap', paddingBottom: 8 }}>
+        {ROUNDS.map(r => (
           <button
             key={r.slug}
             className={`stage-tab ${activeRound === r.slug ? 'active' : ''}`}
             onClick={() => setActiveRound(r.slug)}
           >
-            {r.slug === 'group_stage_1' ? 'Week 1' : r.slug === 'group_stage_2' ? 'Week 2' : r.name}
-            {activeRound === r.slug && (
+            {r.name}
+            {activeRound === r.slug && roundMatches.length > 0 && (
               <span className="count-badge">{predictedCount}/{roundMatches.length}</span>
             )}
           </button>
@@ -749,37 +764,24 @@ function PredictionsPage() {
       {/* Round header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', color: 'hsl(var(--foreground))' }}>
-          {currentRound?.slug === 'group_stage_1' ? 'WEEK 1' : currentRound?.slug === 'group_stage_2' ? 'WEEK 2' : currentRound?.name}
+          {currentRound?.name}
         </h2>
-        {user?.isAdmin ? (
+        {user?.isAdmin && (
           <span style={{ background: 'rgba(234,179,8,0.2)', color: 'hsl(43 96% 60%)', fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(234,179,8,0.3)' }}>⚡ Admin Override</span>
-        ) : isLocked ? (
-          <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.25)' }}>LOCKED</span>
-        ) : (
-          <span style={{ background: 'rgba(34,197,94,0.15)', color: 'hsl(142 71% 45%)', fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(34,197,94,0.25)' }}>OPEN</span>
         )}
       </div>
 
-      {isLocked && !user?.isAdmin && (
-        <div className="card" style={{ padding: 16, marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', borderColor: 'rgba(239,68,68,0.2)' }}>
-          <span>🔒</span>
-          <div>
-            <div style={{ color: '#f87171', fontWeight: 700, fontSize: '0.875rem' }}>Predictions closed</div>
-            <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>+1 pt correct outcome · +3 pts exact score</div>
-          </div>
-        </div>
-      )}
-
       {roundMatches.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">⚽</div>
-          <p>No matches in this round yet.</p>
+        <div className="empty-state" style={{ padding: '64px 32px' }}>
+          <div className="empty-state-icon" style={{ fontSize: '3rem', opacity: 0.5 }}>📅</div>
+          <p style={{ marginTop: 16, color: 'hsl(var(--muted-foreground))', fontSize: '1.1rem' }}>Knockout matches will appear here once the bracket is drawn.</p>
         </div>
       ) : (
         <div className="card" style={{ overflow: 'hidden' }}>
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
-            const canEdit = user?.isAdmin || !isLocked
+            const isMatchLocked = new Date() > new Date(match.scheduledAt)
+            const canEdit = user?.isAdmin || !isMatchLocked
 
             return (
               <div key={match.id} className="prediction-row">
@@ -847,7 +849,7 @@ function PredictionsPage() {
                     </button>
                   ) : (
                     <span style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {match.userPrediction ? 'PREDICTED' : 'NO PICK'}
+                      {match.userPrediction ? 'PREDICTED' : '🔒 LOCKED'}
                     </span>
                   )}
                 </div>
@@ -878,7 +880,7 @@ function LeaderboardPage() {
   const rest = data.slice(3)
 
   return (
-    <div style={{ padding: '32px', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '32px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">Leaderboard</h1>
         <p className="page-subtitle">How do you stack up against the rest?</p>
@@ -904,9 +906,9 @@ function LeaderboardPage() {
                     <div style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: 'Outfit, sans-serif', color: 'hsl(var(--foreground))' }}>
                       {p.totalPoints} <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'hsl(var(--muted-foreground))' }}>pts</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, fontSize: '0.75rem', fontWeight: 700 }}>
-                      <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 4, color: 'hsl(var(--foreground))' }}>{p.exactScores} 🎯</span>
-                      <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 4, color: 'hsl(var(--foreground))' }}>{p.correctOutcomes} ✓</span>
+                    <div style={{ display: 'flex', gap: 8, fontSize: '0.75rem', fontWeight: 700, marginTop: 8 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: 6, color: 'hsl(var(--foreground))' }}>{p.exactScores} 🎯</span>
+                      <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: 6, color: 'hsl(var(--foreground))' }}>{p.correctOutcomes} ✓</span>
                     </div>
                   </div>
                 )
@@ -916,15 +918,15 @@ function LeaderboardPage() {
 
           <div className="card" style={{ overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.03)', fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--muted-foreground))' }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'center', width: 64 }}>Rank</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left' }}>Player</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>Preds</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>Correct</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>Exact</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Points</th>
+                  <tr style={{ background: 'rgba(255,255,255,0.03)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))' }}>
+                    <th style={{ padding: '16px 24px', textAlign: 'center', width: 80 }}>Rank</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'left' }}>Player</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'center' }}>Preds</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'center' }}>Correct</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'center' }}>Exact</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'right' }}>Points</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -932,19 +934,19 @@ function LeaderboardPage() {
                     const isMe = p.userId === user?.id
                     return (
                       <tr key={p.userId} style={{ background: isMe ? 'rgba(255,255,255,0.04)' : 'transparent', borderTop: '1px solid hsl(var(--border) / 0.5)', transition: 'background 0.1s' }}>
-                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                          <span style={{ fontWeight: 900, color: p.rank <= 3 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
+                        <td style={{ padding: '20px 24px', textAlign: 'center' }}>
+                          <span style={{ fontWeight: 900, color: p.rank <= 3 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))', fontSize: '1.1rem' }}>
                             {p.rank}
                           </span>
                         </td>
-                        <td style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 700, color: 'hsl(var(--foreground))' }}>{p.username}</span>
-                          {isMe && <span style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontSize: '0.5rem', fontWeight: 900, padding: '1px 6px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>You</span>}
+                        <td style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ fontWeight: 700, color: 'hsl(var(--foreground))', fontSize: '1rem' }}>{p.username}</span>
+                          {isMe && <span style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontSize: '0.6rem', fontWeight: 900, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>You</span>}
                         </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.predictionsCount}</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.correctOutcomes}</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.exactScores}</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 900, color: 'hsl(var(--foreground))', fontSize: '1rem', fontFamily: 'Outfit, sans-serif' }}>{p.totalPoints}</td>
+                        <td style={{ padding: '20px 24px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.predictionsCount}</td>
+                        <td style={{ padding: '20px 24px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.correctOutcomes}</td>
+                        <td style={{ padding: '20px 24px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.exactScores}</td>
+                        <td style={{ padding: '20px 24px', textAlign: 'right', fontWeight: 900, color: 'hsl(var(--foreground))', fontSize: '1.25rem', fontFamily: 'Outfit, sans-serif' }}>{p.totalPoints}</td>
                       </tr>
                     )
                   })}
