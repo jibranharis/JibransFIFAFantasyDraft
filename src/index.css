@@ -330,6 +330,16 @@ h1, h2, h3, h4, h5, h6, .page-title, .brand-text, .score-input {
   opacity: 0.5;
 }
 
+.match-score-display {
+  text-align: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 24px;
+  text-shadow: 0 0 20px var(--primary-glow);
+}
+
 /* Predictions Section */
 .prediction-section {
   background: rgba(0,0,0,0.2);
