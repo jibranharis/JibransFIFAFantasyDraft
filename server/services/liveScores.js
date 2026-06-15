@@ -1,11 +1,21 @@
-import { matches, calculatePoints, rounds } from '../db.js';
+import { matches, predictions, rounds } from '../db.js';
 
-// This is the automated live score fetcher using API-Football (most popular sports API)
+function outcome(home, away) {
+  if (home > away) return 'home';
+  if (away > home) return 'away';
+  return 'draw';
+}
+
+function calcPoints(predHome, predAway, actualHome, actualAway) {
+  if (predHome === actualHome && predAway === actualAway) return 3;
+  if (outcome(predHome, predAway) === outcome(actualHome, actualAway)) return 1;
+  return 0;
+}
+
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
-const LEAGUE_ID = 4; // World Cup
+const LEAGUE_ID = 4;
 const SEASON = 2026;
 
-// Function to fetch and update live scores automatically
 export async function updateLiveScores() {
   console.log('[LiveScores] Automated API sync starting...');
 
@@ -30,15 +40,13 @@ export async function updateLiveScores() {
 
     let updatedCount = 0;
     
-    // Process each fixture
     for (const fixture of fixtures) {
-      const matchStatus = fixture.fixture.status.short; // "NS", "1H", "HT", "2H", "FT"
+      const matchStatus = fixture.fixture.status.short;
       const homeTeam = fixture.teams.home.name;
       const awayTeam = fixture.teams.away.name;
       const homeScore = fixture.goals.home;
       const awayScore = fixture.goals.away;
 
-      // Find match in our DB by team names
       const dbMatch = matches.find(m => m.home_team === homeTeam && m.away_team === awayTeam)[0];
       
       if (dbMatch) {
@@ -46,16 +54,19 @@ export async function updateLiveScores() {
         if (['1H', 'HT', '2H', 'ET', 'P', 'LIVE'].includes(matchStatus)) status = 'live';
         if (['FT', 'AET', 'PEN'].includes(matchStatus)) status = 'completed';
 
-        // Update if status or score changed
         if (dbMatch.status !== status || dbMatch.home_score !== homeScore || dbMatch.away_score !== awayScore) {
-          matches.update(dbMatch.id, {
+          matches.update(m => m.id === dbMatch.id, {
             status,
             home_score: homeScore !== null ? homeScore : null,
             away_score: awayScore !== null ? awayScore : null
           });
           
-          if (status === 'completed' && dbMatch.status !== 'completed') {
-            calculatePoints(dbMatch.id); // Award points automatically!
+          if (status === 'completed' && dbMatch.status !== 'completed' && homeScore !== null && awayScore !== null) {
+            const matchPredictions = predictions.find((p) => p.match_id === dbMatch.id);
+            for (const pred of matchPredictions) {
+              const pts = calcPoints(pred.home_score, pred.away_score, homeScore, awayScore);
+              predictions.update((p) => p.id === pred.id, { points: pts });
+            }
           }
           updatedCount++;
         }
@@ -67,20 +78,17 @@ export async function updateLiveScores() {
   }
 }
 
-// Start the cron job (runs every 5 minutes)
 export function startAutomatedLiveScores() {
-  updateLiveScores(); // Run immediately on boot
-  setInterval(updateLiveScores, 5 * 60 * 1000); // Run every 5 minutes
+  updateLiveScores();
+  setInterval(updateLiveScores, 5 * 60 * 1000);
 }
 
-// Simulates live score updates when no API key is present
 function simulateLiveScores() {
   const liveMatches = matches.find(m => m.status === 'live');
   for (const m of liveMatches) {
     if (Math.random() > 0.7) {
-      // 30% chance a goal is scored every 5 mins!
       const side = Math.random() > 0.5 ? 'home_score' : 'away_score';
-      matches.update(m.id, { [side]: (m[side] || 0) + 1 });
+      matches.update(x => x.id === m.id, { [side]: (m[side] || 0) + 1 });
       console.log(`[LiveScores] GOAL in simulated match: ${m.home_team} vs ${m.away_team}`);
     }
   }

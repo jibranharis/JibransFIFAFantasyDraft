@@ -193,7 +193,7 @@ function seed() {
 
     for (const match of defaultMatches) {
       matches.insert(match);
-      if (match.status === 'completed') calculatePoints(match.id);
+      // Removed calculatePoints because it doesn't exist here
     }
     console.log(`✅ ${defaultMatches.length} matches seeded`);
   }
