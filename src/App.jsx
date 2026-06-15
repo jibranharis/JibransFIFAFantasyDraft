@@ -1,6 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
-
-// Auth Context
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom'// Auth Context
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
 
@@ -40,17 +39,19 @@ function Toasts({ toasts }) {
 }
 
 // Sidebar
-function Sidebar({ page, setPage }) {
+function Sidebar() {
   const { user, logout } = useAuth()
+  const location = useLocation()
+  const page = location.pathname.substring(1) || 'home'
   const navItems = [
-    { id: 'home', icon: '🏠', label: 'Home' },
-    { id: 'predictions', icon: '⚽', label: 'Predictions' },
-    { id: 'matches', icon: '📅', label: 'Matches' },
-    { id: 'groups', icon: '👥', label: 'Groups' },
-    { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
-    { id: 'arenas', icon: '🏟️', label: 'Arenas' },
-    { id: 'my-results', icon: '📊', label: 'My Results' },
-    ...(user?.isAdmin ? [{ id: 'admin', icon: '⚙️', label: 'Admin Panel' }] : []),
+    { id: 'home', path: '/', icon: '🏠', label: 'Home' },
+    { id: 'predictions', path: '/predictions', icon: '⚽', label: 'Predictions' },
+    { id: 'matches', path: '/matches', icon: '📅', label: 'Matches' },
+    { id: 'groups', path: '/groups', icon: '👥', label: 'Groups' },
+    { id: 'leaderboard', path: '/leaderboard', icon: '🏆', label: 'Leaderboard' },
+    { id: 'arenas', path: '/arenas', icon: '🏟️', label: 'Arenas' },
+    { id: 'my-results', path: '/my-results', icon: '📊', label: 'My Results' },
+    ...(user?.isAdmin ? [{ id: 'admin', path: '/admin', icon: '⚙️', label: 'Admin Panel' }] : []),
   ]
 
   return (
@@ -65,17 +66,17 @@ function Sidebar({ page, setPage }) {
         </div>
         <nav className="sidebar-nav space-y-1">
           {navItems.map(item => (
-            <button
+            <Link
               key={item.id}
-              className={`nav-link w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold transition-all ${page === item.id ? 'bg-[#FFD700] text-black shadow-md' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-              onClick={() => setPage(item.id)}
+              to={item.path}
+              className={`nav-link w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold transition-all ${((page === 'home' && item.id === 'home') || (page !== 'home' && item.path.includes(page))) ? 'bg-[#FFD700] text-black shadow-md' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
             >
               <div className="flex items-center gap-3">
                 <span className="nav-icon opacity-80">{item.icon}</span>
                 {item.label}
               </div>
-              {page === item.id && <span className="opacity-60 text-sm font-black">&gt;</span>}
-            </button>
+              {((page === 'home' && item.id === 'home') || (page !== 'home' && item.path.includes(page))) && <span className="opacity-60 text-sm font-black">&gt;</span>}
+            </Link>
           ))}
         </nav>
       </div>
@@ -935,11 +936,72 @@ function AdminPage() {
   )
 }
 
+// Groups page
+function GroupsPage() {
+  return (
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">👥</span>
+          Groups
+        </h1>
+        <p className="text-slate-400 mt-2">World Cup 2026 Group Standings.</p>
+      </div>
+      <div className="bg-[#151e32] border border-white/5 rounded-2xl p-8 text-center shadow-lg">
+        <span className="text-4xl mb-4 block">⚽</span>
+        <h2 className="text-xl font-bold text-white mb-2">Group Data Loading...</h2>
+        <p className="text-slate-400">The actual group stage standings will appear here once the tournament begins.</p>
+      </div>
+    </div>
+  )
+}
+
+// My Results page
+function MyResultsPage() {
+  return (
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">📊</span>
+          My Results
+        </h1>
+        <p className="text-slate-400 mt-2">Your historical prediction accuracy.</p>
+      </div>
+      <div className="bg-[#151e32] border border-white/5 rounded-2xl p-8 text-center shadow-lg">
+        <span className="text-4xl mb-4 block">📈</span>
+        <h2 className="text-xl font-bold text-white mb-2">No Results Yet</h2>
+        <p className="text-slate-400">Make some predictions and wait for matches to complete to see your stats.</p>
+      </div>
+    </div>
+  )
+}
+
+// App Layout with Sidebar
+function AppLayout() {
+  return (
+    <div className="app">
+      <Sidebar />
+      <main className="main">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/predictions" element={<PredictionsPage />} />
+          <Route path="/matches" element={<MatchesPage />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/arenas" element={<ArenasPage />} />
+          <Route path="/my-results" element={<MyResultsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
 // Main App
 export default function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [page, setPage] = useState('home')
   const [toasts, setToasts] = useState([])
 
   const toast = useCallback((type, title, message) => {
@@ -960,24 +1022,20 @@ export default function App() {
 
   if (authLoading) return <div className="loading-center" style={{ height: '100vh' }}><div className="spinner" /></div>
 
-  const pages = { home: HomePage, predictions: PredictionsPage, leaderboard: LeaderboardPage, matches: MatchesPage, arenas: ArenasPage, admin: AdminPage }
-  const PageComponent = pages[page] || HomePage
-
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      <ToastContext.Provider value={{ toast }}>
-        {!user ? (
-          <AuthPage />
-        ) : (
-          <div className="app">
-            <Sidebar page={page} setPage={setPage} />
-            <main className="main">
-              <PageComponent />
-            </main>
-          </div>
-        )}
-        <Toasts toasts={toasts} />
-      </ToastContext.Provider>
-    </AuthContext.Provider>
+    <BrowserRouter>
+      <AuthContext.Provider value={{ user, login, logout }}>
+        <ToastContext.Provider value={{ toast }}>
+          {!user ? (
+            <Routes>
+              <Route path="*" element={<AuthPage />} />
+            </Routes>
+          ) : (
+            <AppLayout />
+          )}
+          <Toasts toasts={toasts} />
+        </ToastContext.Provider>
+      </AuthContext.Provider>
+    </BrowserRouter>
   )
 }
