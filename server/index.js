@@ -21,6 +21,9 @@ const isProd = process.env.NODE_ENV === 'production';
 
 app.use(cors({ origin: isProd ? false : 'http://localhost:3001', credentials: true }));
 app.use(express.json());
+// Trust the Render reverse proxy so secure cookies work
+app.set('trust proxy', 1);
+
 app.use(session({
   secret: 'futbol-is-life-secret-2026',
   resave: false,

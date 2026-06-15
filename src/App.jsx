@@ -153,8 +153,8 @@ function PredictionsPage() {
 
   useEffect(() => {
     Promise.all([
-      api('/api/matches'),
-      api('/api/rounds')
+      api('/api/matches').then(r => r.matches || r),
+      api('/api/rounds').then(r => r.rounds || r)
     ]).then(([m, r]) => {
       setMatches(m)
       setRounds(r)
@@ -317,7 +317,7 @@ function LeaderboardPage() {
   const { user } = useAuth()
 
   useEffect(() => {
-    api('/api/leaderboard').then(setData).finally(() => setLoading(false))
+    api('/api/leaderboard').then(r => setData(r.leaderboard || r)).finally(() => setLoading(false))
   }, [])
 
   const medals = ['🥇', '🥈', '🥉']
@@ -361,7 +361,7 @@ function MatchesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api('/api/matches').then(setMatches).finally(() => setLoading(false))
+    api('/api/matches').then(r => setMatches(r.matches || r)).finally(() => setLoading(false))
   }, [])
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
@@ -409,7 +409,7 @@ function ArenasPage() {
   const [joinCode, setJoinCode] = useState('')
   const [newArenaName, setNewArenaName] = useState('')
 
-  const load = () => api('/api/arenas').then(setArenas).finally(() => setLoading(false))
+  const load = () => api('/api/arenas').then(r => setArenas(r.arenas || r)).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
   const join = async () => {
@@ -491,7 +491,7 @@ function AdminPage() {
   const [resultInputs, setResultInputs] = useState({})
   const { toast } = useToast()
 
-  const load = () => Promise.all([api('/api/matches'), api('/api/rounds')]).then(([m, r]) => { setMatches(m); setRounds(r) })
+  const load = () => Promise.all([api('/api/matches').then(r=>r.matches||r), api('/api/rounds').then(r=>r.rounds||r)]).then(([m, r]) => { setMatches(m); setRounds(r) })
   useEffect(() => { load() }, [])
 
   const setMatchStatus = async (matchId, status) => {
