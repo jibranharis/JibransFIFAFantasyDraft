@@ -1,4 +1,3 @@
-import fetch from 'node-fetch'; // Standard fetch or we can use native fetch since Node 18+
 import { matches, calculatePoints, rounds } from '../db.js';
 
 // This is the automated live score fetcher using API-Football (most popular sports API)
