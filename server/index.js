@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 
-import { connectDB } from './db.js'; // initializes data on startup
+import { connectDB, users } from './db.js'; // initializes data on startup
 import { startAutomatedLiveScores } from './services/liveScores.js';
 import authRoutes from './routes/auth.js';
 import matchRoutes from './routes/matches.js';
@@ -45,6 +45,13 @@ app.use(session({
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days in ms
   }
 }));
+
+app.use((req, res, next) => {
+  if (req.session?.userId) {
+    req.user = users.get(u => u.id === req.session.userId) || null;
+  }
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
