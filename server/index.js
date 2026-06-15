@@ -1,0 +1,50 @@
+import express from 'express';
+import session from 'express-session';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+import './db.js'; // initializes data on startup
+import authRoutes from './routes/auth.js';
+import matchRoutes from './routes/matches.js';
+import predictionRoutes from './routes/predictions.js';
+import roundRoutes from './routes/rounds.js';
+import leaderboardRoutes from './routes/leaderboard.js';
+import arenaRoutes from './routes/arenas.js';
+import adminRoutes from './routes/admin.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const app = express();
+const PORT = 5000;
+
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(express.json());
+app.use(session({
+  secret: 'futbol-is-life-secret-2026',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 }
+}));
+
+// Attach user to request from session
+app.use((req, res, next) => {
+  if (req.session.userId) {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
+    req.user = user || null;
+  } else {
+    req.user = null;
+  }
+  next();
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/predictions', predictionRoutes);
+app.use('/api/rounds', roundRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/arenas', arenaRoutes);
+app.use('/api/admin', adminRoutes);
+
+app.listen(PORT, () => {
+  console.log(`⚽ Fútbol is Life server running on http://localhost:${PORT}`);
+});
