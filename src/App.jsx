@@ -65,8 +65,8 @@ const STAGE_ORDER = {
   'group_stage': 1,
   'round_of_32': 2,
   'round_of_16': 3,
-  'quarter_finals': 4,
-  'semi_finals': 5,
+  'quarterfinals': 4,
+  'semifinals': 5,
   'third_place': 6,
   'final': 7
 }
@@ -345,7 +345,7 @@ function HomePage() {
             World Cup 2026 — here's how you're doing.
           </p>
         </div>
-        <Link to="/predictions" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontSize: '0.875rem' }}>
+        <Link to="/predictions" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontSize: '0.875rem', width: 'auto' }}>
           <span>◎</span> Predictions
         </Link>
       </div>
@@ -666,8 +666,7 @@ function MatchesPage() {
 // Predictions page
 // ============================================================
 const ROUNDS = [
-  { slug: 'group_stage_1', name: 'Group Stage (MD1)' },
-  { slug: 'group_stage_2', name: 'Group Stage (MD2+3)' },
+  { slug: 'group_stage', name: 'Group Stage' },
   { slug: 'round_of_32', name: 'Round of 32' },
   { slug: 'round_of_16', name: 'Round of 16' },
   { slug: 'quarterfinals', name: 'Quarterfinals' },
@@ -679,7 +678,7 @@ function PredictionsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [matches, setMatches] = useState([])
-  const [activeRound, setActiveRound] = useState('group_stage_1')
+  const [activeRound, setActiveRound] = useState('group_stage')
   const [scores, setScores] = useState({})
   const [saving, setSaving] = useState({})
   const [loading, setLoading] = useState(true)
@@ -708,11 +707,7 @@ function PredictionsPage() {
     }).finally(() => setLoading(false))
   }, [user?.id])
 
-  const roundMatches = matches.filter(m => {
-    if (activeRound === 'group_stage_1') return m.stage === 'group_stage' && m.matchDay === 1
-    if (activeRound === 'group_stage_2') return m.stage === 'group_stage' && m.matchDay >= 2
-    return m.stage === activeRound
-  })
+  const roundMatches = matches.filter(m => m.stage === activeRound)
 
   const currentRound = ROUNDS.find(r => r.slug === activeRound)
 
@@ -746,7 +741,7 @@ function PredictionsPage() {
       </div>
 
       {/* Round tabs */}
-      <div className="stage-tabs" style={{ marginBottom: 24, overflowX: 'auto', whiteSpace: 'nowrap', paddingBottom: 8 }}>
+      <div className="stage-tabs" style={{ marginBottom: 24 }}>
         {ROUNDS.map(r => (
           <button
             key={r.slug}
