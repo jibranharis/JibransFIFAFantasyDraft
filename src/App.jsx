@@ -1,6 +1,8 @@
 import { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+
+const formatMatch = m => ({ ...m, homeTeam: m.home_team, awayTeam: m.away_team, homeFlag: m.home_flag, awayFlag: m.away_flag, homeScore: m.home_score, awayScore: m.away_score, groupName: m.group_name, scheduledAt: m.scheduled_at, matchDay: m.match_day })
 import './design.css'
 
 // ============================================================
@@ -298,17 +300,17 @@ function HomePage() {
       supabase.from('leaderboard').select('*').order('total_points', { ascending: false }),
       supabase.from('arenas').select('*, arena_members(user_id)')
     ]).then(([{data: matches}, {data: lb}, {data: a}]) => {
-      matches = matches || []
+      matches = (matches || []).map(formatMatch)
       lb = lb || []
       const arenasData = (a || []).map(ar => ({ ...ar, isMember: ar.arena_members.some(m => m.user_id === user?.id), membersCount: ar.arena_members.length }))
       // TODO: get user predictions to map recentCompleted
       supabase.from('predictions').select('*').eq('user_id', user?.id).then(({data: myPreds}) => {
-        const pMap = (myPreds || []).reduce((acc, p) => ({ ...acc, [p.match_id]: p }), {})
+        const pMap = (myPreds || []).reduce((acc, p) => ({ ...acc, [p.match_id]: { ...p, homeScore: p.home_score, awayScore: p.away_score } }), {})
         const matchesWithPreds = matches.map(m => ({ ...m, userPrediction: pMap[m.id] }))
         
         setRecentCompleted(matchesWithPreds.filter(m => m.status === 'completed' && m.userPrediction).slice(0, 5))
         setUpcoming(matchesWithPreds.filter(m => m.status === 'scheduled').slice(0, 3))
-        setTopPredictors(lb.slice(0, 5))
+        setTopPredictors((lb || []).map(l => ({ ...l, userId: l.user_id, username: l.display_name, totalPoints: l.total_points, exactScores: l.exact_scores, predictionsCount: l.predictions_count })).slice(0, 5))
         setArenas(arenasData)
         const me = lb.find(p => p.user_id === user?.id)
         if (me) setStats({ rank: lb.findIndex(x => x.user_id === user?.id) + 1, totalPoints: me.total_points || 0, exactScores: me.exact_scores || 0, predictions: me.predictions_count || 0 })
@@ -339,9 +341,9 @@ function HomePage() {
           <div style={{ color: '#FFC107', fontSize: '1.5rem' }}>⏱️</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--foreground))', marginBottom: 2 }}>
-              Group Stage – Matchdays 2&3 predictions close in <span style={{ color: '#FFC107' }}>2d 20h 57m</span>
+              Group Stage predictions are open!
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>29/48 predicted</div>
+            <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{stats.predictions}/104 predicted</div>
           </div>
         </div>
         <Link to="/predictions" className="btn-ghost" style={{ border: '1px solid hsl(var(--border))', background: 'transparent' }}>◎ Predict</Link>
@@ -532,7 +534,7 @@ function MatchesPage() {
   const [activeStage, setActiveStage] = useState(null)
 
   useEffect(() => {
-    supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => ({ matches: r.data || [] }))
+    supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => ({ matches: (r.data || []).map(formatMatch) }))
       .then(r => {
         const m = r.matches || r
         setMatches(m)
@@ -661,7 +663,7 @@ function PredictionsPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => r.data || []),
+      supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => (r.data || []).map(formatMatch)),
       Promise.resolve([])
     ]).then(([m, r]) => {
       setMatches(m)
@@ -853,7 +855,7 @@ function LeaderboardPage() {
   const { user } = useAuth()
 
   useEffect(() => {
-    supabase.from('leaderboard').select('*').order('total_points', { ascending: false }).then(r => setData(r.data || [])).finally(() => setLoading(false))
+    supabase.from('leaderboard').select('*').order('total_points', { ascending: false }).then(r => setData((r.data || []).map(l => ({ ...l, userId: l.user_id, displayName: l.display_name, totalPoints: l.total_points, exactScores: l.exact_scores, predictionsCount: l.predictions_count })))).finally(() => setLoading(false))
   }, [])
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
@@ -1131,7 +1133,7 @@ function AdminPage() {
     supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => r.data || []),
     Promise.resolve([]),
     supabase.from('profiles').select('id, display_name, predictions(match_id, home_score, away_score)').then(r => {
-      return (r.data || []).map(u => ({ id: u.id, displayName: u.display_name, predictions: u.predictions }))
+      return (r.data || []).map(u => ({ id: u.id, displayName: u.display_name, predictions: u.predictions.map(p => ({ matchId: p.match_id, homeScore: p.home_score, awayScore: p.away_score })) }))
     })
   ]).then(([m, r, p]) => { setMatches(m); setRounds(r); setAllPredictions(p); })
   useEffect(() => { load() }, [])
