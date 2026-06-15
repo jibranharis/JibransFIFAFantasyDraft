@@ -16,6 +16,15 @@ async function api(path, opts = {}) {
   return data
 }
 
+function getAbbr(team) {
+  if (!team || team.startsWith('Team ')) return 'TBD'
+  if (team.toUpperCase() === 'USA') return 'USA'
+  if (team.toUpperCase() === 'SOUTH KOREA') return 'KOR'
+  if (team.toUpperCase() === 'SOUTH AFRICA') return 'RSA'
+  if (team.toUpperCase() === 'IVORY COAST') return 'CIV'
+  return team.substring(0, 3).toUpperCase()
+}
+
 // Toast component
 function Toasts({ toasts }) {
   return (
@@ -36,37 +45,66 @@ function Sidebar({ page, setPage }) {
   const navItems = [
     { id: 'home', icon: '🏠', label: 'Home' },
     { id: 'predictions', icon: '⚽', label: 'Predictions' },
+    { id: 'matches', icon: '📅', label: 'Matches' },
+    { id: 'groups', icon: '👥', label: 'Groups' },
     { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
     { id: 'arenas', icon: '🏟️', label: 'Arenas' },
-    { id: 'matches', icon: '📅', label: 'Matches' },
+    { id: 'my-results', icon: '📊', label: 'My Results' },
     ...(user?.isAdmin ? [{ id: 'admin', icon: '⚙️', label: 'Admin Panel' }] : []),
   ]
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-logo">
-        <span>🏆</span> Fútbol is Life
-      </div>
-      <nav className="sidebar-nav">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            className={`nav-link ${page === item.id ? 'active' : ''}`}
-            onClick={() => setPage(item.id)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      {user && (
-        <div className="sidebar-user">
-          <div className="sidebar-user-name">{user.displayName}</div>
-          <div className="sidebar-user-email">{user.email}</div>
-          {user.isAdmin && <div className="admin-badge">⚡ ADMIN</div>}
-          <button className="btn-logout" onClick={logout}>Sign out</button>
+    <div className="sidebar flex flex-col justify-between h-full p-4 border-r border-slate-800 bg-[#0A1128] w-[260px]">
+      <div>
+        <div className="sidebar-logo flex items-center gap-3 font-black text-2xl mb-8 tracking-tight text-white">
+          <span className="text-3xl">🏆</span> 
+          <div>
+            <div>Fútbol is Life</div>
+            <div className="text-xs font-normal text-slate-400 tracking-normal uppercase">WC 2026 Predictions</div>
+          </div>
         </div>
-      )}
+        <nav className="sidebar-nav space-y-1">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              className={`nav-link w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold transition-all ${page === item.id ? 'bg-[#FFD700] text-black shadow-md' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => setPage(item.id)}
+            >
+              <div className="flex items-center gap-3">
+                <span className="nav-icon opacity-80">{item.icon}</span>
+                {item.label}
+              </div>
+              {page === item.id && <span className="opacity-60 text-sm font-black">&gt;</span>}
+            </button>
+          ))}
+        </nav>
+      </div>
+      
+      <div>
+        <div className="w-full h-32 rounded-xl overflow-hidden mb-4 relative">
+           <img src="https://images.unsplash.com/photo-1518605368461-1ee7c5320c2d?auto=format&fit=crop&q=80&w=300" className="w-full h-full object-cover opacity-80 mix-blend-luminosity" />
+           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center pb-3">
+             <span className="text-[10px] font-black tracking-[0.2em] text-white/80">USA · CANADA · MEXICO</span>
+           </div>
+        </div>
+
+        {user && (
+          <div className="sidebar-user bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#FFD700] text-black flex items-center justify-center font-bold text-lg">
+              {user.displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="overflow-hidden flex-1">
+              <div className="sidebar-user-name text-sm font-bold truncate text-white">{user.displayName}</div>
+              <div className="sidebar-user-email text-xs text-slate-400 truncate">{user.email}</div>
+            </div>
+          </div>
+        )}
+        {user && (
+          <button className="w-full mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-colors" onClick={logout}>
+            <span>↪️</span> Sign out
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -272,7 +310,6 @@ function PredictionsPage() {
     ]).then(([m, r]) => {
       setMatches(m)
       setRounds(r)
-      // Init scores from existing predictions
       const init = {}
       m.forEach(match => {
         if (match.userPrediction) {
@@ -316,110 +353,135 @@ function PredictionsPage() {
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
-  return (
-    <div className="page-content">
-      <div className="page-title">⚽ Predictions</div>
-      <div className="page-sub">Submit your score predictions before each round locks.</div>
+  const predictedCount = roundMatches.filter(m => scores[m.id]?.home !== undefined).length
 
-      <div className="tabs">
-        {rounds.slice(0, 4).map(r => (
-          <button key={r.slug} className={`tab-btn ${activeRound === r.slug ? 'active' : ''}`} onClick={() => setActiveRound(r.slug)}>
+  return (
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">⚽</span>
+          Predictions
+        </h1>
+        <p className="text-slate-400 mt-2">Predict every score before each window locks. Group Stage splits into two deadlines.</p>
+      </div>
+
+      <div className="bg-[#151e32] border border-white/5 rounded-2xl p-1 flex gap-1 mb-8 overflow-x-auto">
+        {rounds.slice(0, 6).map(r => (
+          <button 
+            key={r.slug} 
+            className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeRound === r.slug ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`} 
+            onClick={() => setActiveRound(r.slug)}
+          >
             {r.slug === 'group_stage_1' ? 'Week 1' : r.slug === 'group_stage_2' ? 'Week 2' : r.name}
+            {activeRound === r.slug && (
+               <span className="text-green-500 font-bold text-xs ml-1">{predictedCount}/{roundMatches.length}</span>
+            )}
           </button>
         ))}
       </div>
 
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-xl font-black text-white uppercase tracking-tight">
+          {currentRound?.slug === 'group_stage_1' ? 'WEEK 1' : currentRound?.slug === 'group_stage_2' ? 'WEEK 2' : currentRound?.name}
+        </h2>
         {user?.isAdmin ? (
-          <span className="admin-override-badge">⚡ Admin — Lock bypassed</span>
+          <span className="bg-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase px-2 py-1 rounded-md border border-yellow-500/30">⚡ Admin Override</span>
         ) : isLocked ? (
-          <span className="lock-badge">🔒 Round Locked</span>
+          <span className="bg-red-500/20 text-red-500 text-[10px] font-black uppercase px-2 py-1 rounded-md border border-red-500/30">LOCKED</span>
         ) : (
-          <span className="open-badge">🟢 Open for Predictions</span>
+          <span className="bg-green-500/20 text-green-500 text-[10px] font-black uppercase px-2 py-1 rounded-md border border-green-500/30">OPEN</span>
         )}
       </div>
 
+      {isLocked && !user?.isAdmin && (
+        <div className="bg-[#151e32] border border-red-500/20 rounded-2xl p-4 mb-6 flex items-center gap-3">
+          <span className="text-red-500">🔒</span>
+          <div>
+            <div className="text-red-500 font-bold">Predictions closed</div>
+            <div className="text-slate-400 text-xs">0/{roundMatches.length} predicted · +1 pt outcome / +3 pts exact score</div>
+          </div>
+        </div>
+      )}
+
       {roundMatches.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">📅</div>
           <div className="empty-title">No matches in this round yet</div>
         </div>
-      ) : roundMatches.map(match => {
-        const s = scores[match.id] || {}
-        const hasPred = match.userPrediction || (s.home !== undefined && s.away !== undefined && s.home !== '' && s.away !== '')
-        const canEdit = user?.isAdmin || !isLocked
+      ) : (
+        <div className="bg-[#151e32] border border-white/5 rounded-2xl overflow-hidden shadow-lg flex flex-col divide-y divide-white/5">
+          {roundMatches.map(match => {
+            const s = scores[match.id] || {}
+            const canEdit = user?.isAdmin || !isLocked
 
-        return (
-          <div key={match.id} className="match-card">
-            <div className="match-header">
-              <div>
-                <div className="match-stage">Group {match.groupName} · {match.stage === 'group_stage' ? `Matchday ${match.matchDay}` : match.stage}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className={`status-pill status-${match.status}`}>{match.status}</span>
-                <span className="match-time">{new Date(match.scheduledAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </div>
+            return (
+              <div key={match.id} className="flex flex-col md:flex-row items-center justify-between p-4 hover:bg-white/[0.02] transition-colors gap-4">
+                <div className="w-full md:w-32 text-[11px] font-bold text-slate-400 text-center md:text-left">
+                  {new Date(match.scheduledAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+                
+                <div className="flex-1 flex items-center justify-center gap-4 md:gap-8 w-full">
+                  <div className="flex items-center gap-3 flex-1 justify-end">
+                    <span className="font-black text-white text-lg">{getAbbr(match.homeTeam)}</span>
+                    <span className="text-3xl filter drop-shadow-md">{match.homeFlag}</span>
+                  </div>
 
-            <div className="match-teams">
-              <div className="team">
-                <span className="team-flag">{match.homeFlag}</span>
-                <span className="team-name">{match.homeTeam}</span>
-              </div>
-              <div className="match-vs">VS</div>
-              <div className="team">
-                <span className="team-flag">{match.awayFlag}</span>
-                <span className="team-name">{match.awayTeam}</span>
-              </div>
-            </div>
+                  <div className="flex flex-col items-center justify-center w-24">
+                    {canEdit ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number" min="0" max="20" 
+                          className="w-10 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none"
+                          value={s.home ?? match.userPrediction?.homeScore ?? ''}
+                          onChange={e => setScore(match.id, 'home', e.target.value)}
+                          placeholder="0"
+                        />
+                        <span className="text-slate-500 font-black">-</span>
+                        <input
+                          type="number" min="0" max="20" 
+                          className="w-10 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none"
+                          value={s.away ?? match.userPrediction?.awayScore ?? ''}
+                          onChange={e => setScore(match.id, 'away', e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-2xl font-black text-white tracking-tighter">
+                          {match.userPrediction ? `${match.userPrediction.homeScore} - ${match.userPrediction.awayScore}` : '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-500 mt-1">
+                          {match.status === 'completed' ? 'FT' : match.status === 'live' ? 'LIVE' : ''}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-            {match.status === 'completed' && match.homeScore !== null && (
-              <div className="match-score-display">{match.homeScore} – {match.awayScore}</div>
-            )}
+                  <div className="flex items-center gap-3 flex-1 justify-start">
+                    <span className="text-3xl filter drop-shadow-md">{match.awayFlag}</span>
+                    <span className="font-black text-white text-lg">{getAbbr(match.awayTeam)}</span>
+                  </div>
+                </div>
 
-            <div className="prediction-section">
-              {canEdit ? (
-                <>
-                  <div className="prediction-inputs">
-                    <input
-                      type="number" min="0" max="20" className="score-input"
-                      value={s.home ?? match.userPrediction?.homeScore ?? ''}
-                      onChange={e => setScore(match.id, 'home', e.target.value)}
-                      placeholder="0"
-                    />
-                    <span className="score-sep">–</span>
-                    <input
-                      type="number" min="0" max="20" className="score-input"
-                      value={s.away ?? match.userPrediction?.awayScore ?? ''}
-                      onChange={e => setScore(match.id, 'away', e.target.value)}
-                      placeholder="0"
-                    />
+                <div className="w-full md:w-24 flex justify-center md:justify-end">
+                  {canEdit ? (
                     <button
-                      className="save-btn"
+                      className="bg-white/5 hover:bg-[#FFD700] text-slate-300 hover:text-black font-bold text-xs px-4 py-2 rounded-lg transition-colors w-full md:w-auto"
                       onClick={() => saveScore(match.id)}
                       disabled={saving[match.id]}
                     >
-                      {saving[match.id] ? '...' : 'Save'}
+                      {saving[match.id] ? '...' : 'SAVE'}
                     </button>
-                  </div>
-                  {match.userPrediction && (
-                    <div className="saved-prediction">
-                      Current: <strong>{match.userPrediction.homeScore} – {match.userPrediction.awayScore}</strong>
-                    </div>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">
+                      {match.userPrediction ? 'PREDICTED' : 'NO PREDICTION'}
+                    </span>
                   )}
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '0.85rem' }}>
-                  {match.userPrediction
-                    ? <span>Your prediction: <strong style={{ color: 'var(--text)' }}>{match.userPrediction.homeScore} – {match.userPrediction.awayScore}</strong></span>
-                    : '🔒 Round locked — no prediction submitted'
-                  }
                 </div>
-              )}
-            </div>
-          </div>
-        )
-      })}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -434,37 +496,98 @@ function LeaderboardPage() {
     api('/api/leaderboard').then(r => setData(r.leaderboard || r)).finally(() => setLoading(false))
   }, [])
 
-  const medals = ['🥇', '🥈', '🥉']
-
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
+  const top3 = data.slice(0, 3)
+  const rest = data.slice(3)
+
   return (
-    <div className="page-content">
-      <div className="page-title">🏆 Leaderboard</div>
-      <div className="page-sub">Rankings based on prediction accuracy.</div>
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">🏆</span>
+          Leaderboard
+        </h1>
+        <p className="text-slate-400 mt-2">How do you stack up against the rest?</p>
+      </div>
+
+      <div className="flex gap-2 mb-8">
+        <button className="bg-[#FFD700] text-black shadow-sm flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+          <span className="h-3.5 w-3.5">🌍</span> Global
+        </button>
+      </div>
+
       {data.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🏆</div>
           <div className="empty-title">No scores yet</div>
-          <div>Results will appear once matches are complete.</div>
         </div>
-      ) : data.map((p, i) => (
-        <div key={p.userId} className={`leaderboard-row ${i < 3 ? `top-${i+1}` : ''}`}>
-          <div className="rank-num">
-            {i < 3 ? <span className="rank-medal">{medals[i]}</span> : `#${p.rank}`}
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3 mb-8">
+            {top3.map((p) => {
+              const isMe = p.userId === user?.id
+              const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : '🥉'
+              const colorClass = p.rank === 1 
+                ? 'border-yellow-500/30 bg-yellow-500/5' 
+                : p.rank === 2 
+                  ? 'border-slate-400/20 bg-slate-400/5' 
+                  : 'border-amber-600/20 bg-amber-600/5'
+                  
+              return (
+                <div key={p.userId} className={`rounded-xl border p-4 text-center flex flex-col items-center gap-2 relative overflow-hidden ${colorClass}`}>
+                  {isMe && <div className="absolute top-0 w-full h-1 bg-[#FFD700]"></div>}
+                  <div className="text-3xl">{medal}</div>
+                  <div className="font-black text-white text-lg truncate w-full">{p.username}</div>
+                  <div className="text-2xl font-black text-white">{p.totalPoints} <span className="text-sm text-slate-500 font-normal">pts</span></div>
+                  <div className="flex gap-2 text-xs font-bold mt-2">
+                    <span className="bg-white/10 px-2 py-1 rounded text-slate-300">{p.exactScores} 🎯</span>
+                    <span className="bg-white/10 px-2 py-1 rounded text-slate-300">{p.correctOutcomes} ✓</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          <div className="player-name">
-            {p.username}
-            {p.userId === user?.id && <span style={{ color: 'var(--primary)', fontSize: '0.75rem', marginLeft: 6 }}>(you)</span>}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-              {p.exactScores}🎯 {p.correctOutcomes}✓
+
+          <div className="bg-[#151e32] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white/5 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3 text-center w-16">Rank</th>
+                    <th className="px-4 py-3">Player</th>
+                    <th className="px-4 py-3 text-center">Preds</th>
+                    <th className="px-4 py-3 text-center">Correct</th>
+                    <th className="px-4 py-3 text-center">Exact</th>
+                    <th className="px-4 py-3 text-right">Points</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {data.map((p) => {
+                    const isMe = p.userId === user?.id
+                    return (
+                      <tr key={p.userId} className={`${isMe ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'} transition-colors`}>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`font-black ${p.rank <= 3 ? 'text-[#FFD700]' : 'text-slate-500'}`}>
+                            {p.rank}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 font-bold text-white flex items-center gap-2">
+                          {p.username}
+                          {isMe && <span className="bg-[#FFD700] text-black text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wide">You</span>}
+                        </td>
+                        <td className="px-4 py-4 text-center font-medium text-slate-400">{p.predictionsCount}</td>
+                        <td className="px-4 py-4 text-center font-medium text-slate-400">{p.correctOutcomes}</td>
+                        <td className="px-4 py-4 text-center font-medium text-slate-400">{p.exactScores}</td>
+                        <td className="px-4 py-4 text-right font-black text-white text-base">{p.totalPoints}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div className="pts-badge">{p.totalPoints} pts</div>
           </div>
-        </div>
-      ))}
+        </>
+      )}
     </div>
   )
 }
@@ -482,32 +605,76 @@ function MatchesPage() {
 
   const groups = {}
   matches.forEach(m => {
-    const g = m.groupName || m.stage
+    const g = m.groupName ? `GROUP ${m.groupName}` : m.stage
     if (!groups[g]) groups[g] = []
     groups[g].push(m)
   })
 
   return (
-    <div className="page-content">
-      <div className="page-title">📅 Matches</div>
-      <div className="page-sub">Full World Cup 2026 schedule.</div>
+    <div className="page-content max-w-6xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">📅</span>
+          Matches
+        </h1>
+        <p className="text-slate-400 mt-2">All 104 World Cup 2026 matches by round.</p>
+      </div>
+
       {Object.entries(groups).map(([g, gMatches]) => (
-        <div key={g} style={{ marginBottom: 24 }}>
-          <div className="section-header">
-            <div className="section-title">Group {g}</div>
+        <div key={g} className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-[#FFD700] text-xl">📅</span>
+            <h2 className="text-xl font-black text-white uppercase tracking-tight">{g}</h2>
+            <span className="text-xs text-slate-500 font-bold ml-2">{gMatches.length} matches</span>
           </div>
-          {gMatches.map(m => (
-            <div key={m.id} className="admin-match-row">
-              <span style={{ fontSize: '1.3rem' }}>{m.homeFlag}</span>
-              <div className="admin-match-teams">{m.homeTeam} vs {m.awayTeam}</div>
-              <span style={{ fontSize: '1.3rem' }}>{m.awayFlag}</span>
-              <div className="admin-match-time">{new Date(m.scheduledAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-              <span className={`status-pill status-${m.status}`}>{m.status}</span>
-              {m.status === 'completed' && m.homeScore !== null && (
-                <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{m.homeScore}–{m.awayScore}</span>
-              )}
-            </div>
-          ))}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {gMatches.map(m => (
+              <div key={m.id} className="bg-[#151e32] border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-colors shadow-lg">
+                <div className="p-4">
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="text-[11px] font-bold text-slate-400">
+                      {new Date(m.scheduledAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <div className="text-[10px] font-black tracking-wider text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{g}</div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center px-2">
+                    <div className="flex flex-col items-center gap-2 w-20">
+                      <span className="text-4xl filter drop-shadow-md">{m.homeFlag}</span>
+                      <span className="font-black text-white tracking-tight">{getAbbr(m.homeTeam)}</span>
+                      <span className="text-[10px] text-slate-500 font-medium truncate w-full text-center">{m.homeTeam}</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      {m.status === 'completed' || m.status === 'live' ? (
+                        <>
+                          <div className="text-3xl font-black text-white tracking-tighter">
+                            {m.homeScore} - {m.awayScore}
+                          </div>
+                          <div className={`text-xs font-bold mt-1 ${m.status === 'live' ? 'text-red-500 animate-pulse' : 'text-slate-500'}`}>
+                            {m.status === 'live' ? 'LIVE' : 'FT'}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-sm font-bold text-slate-500 bg-white/5 px-3 py-1 rounded-full">VS</div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-2 w-20">
+                      <span className="text-4xl filter drop-shadow-md">{m.awayFlag}</span>
+                      <span className="font-black text-white tracking-tight">{getAbbr(m.awayTeam)}</span>
+                      <span className="text-[10px] text-slate-500 font-medium truncate w-full text-center">{m.awayTeam}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-[#0A1128]/50 border-t border-white/5 p-3 text-center">
+                  <span className="text-xs font-medium italic text-slate-500">No prediction made</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>
