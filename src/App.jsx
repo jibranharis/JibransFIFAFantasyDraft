@@ -37,11 +37,27 @@ function getAbbr(team) {
   return team.substring(0, 3).toUpperCase()
 }
 
-const STAGE_ORDER = { group_stage: 1, round_of_32: 2, round_of_16: 3, quarterfinals: 4, semifinals: 5, final: 6 }
-const STAGE_LABELS = { group_stage: 'Group Stage', round_of_32: 'Round of 32', round_of_16: 'Round of 16', quarterfinals: 'Quarterfinals', semifinals: 'Semifinals', final: 'Final' }
+function stageLabel(slug) {
+  const map = {
+    'group_stage': 'Group Stage',
+    'round_of_32': 'Round of 32',
+    'round_of_16': 'Round of 16',
+    'quarter_finals': 'Quarterfinals',
+    'semi_finals': 'Semifinals',
+    'final': 'Final',
+    'third_place': 'Third Place'
+  }
+  return map[slug] || slug
+}
 
-function stageLabel(stage) {
-  return STAGE_LABELS[stage] || (stage || '').replace(/_/g, ' ')
+const STAGE_ORDER = {
+  'group_stage': 1,
+  'round_of_32': 2,
+  'round_of_16': 3,
+  'quarter_finals': 4,
+  'semi_finals': 5,
+  'third_place': 6,
+  'final': 7
 }
 
 // ============================================================
@@ -288,14 +304,18 @@ function HomePage() {
   const [topPredictors, setTopPredictors] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const [arenas, setArenas] = useState([])
+
   useEffect(() => {
     Promise.all([
       api('/api/matches').then(r => r.matches || r),
       api('/api/leaderboard').then(r => r.leaderboard || r),
-    ]).then(([matches, lb]) => {
+      api('/api/arenas').then(r => r.arenas || r)
+    ]).then(([matches, lb, a]) => {
       setRecentCompleted(matches.filter(m => m.status === 'completed' && m.userPrediction).slice(0, 5))
       setUpcoming(matches.filter(m => m.status === 'scheduled').slice(0, 3))
       setTopPredictors(lb.slice(0, 5))
+      setArenas(a)
       const me = lb.find(p => p.userId === user?.id)
       if (me) setStats({ rank: me.rank, totalPoints: me.totalPoints || 0, exactScores: me.exactScores || 0, predictions: me.predictionsCount || 0 })
     }).catch(() => {}).finally(() => setLoading(false))
@@ -305,32 +325,78 @@ function HomePage() {
 
   return (
     <div style={{ padding: '32px', maxWidth: 1024, margin: '0 auto' }}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.875rem', fontWeight: 900, letterSpacing: '-0.025em', color: 'hsl(var(--foreground))', marginBottom: 4 }}>
-          Welcome back, {user?.displayName}
-        </h1>
-        <p style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-          Track your predictions and see how you stack up.
-        </p>
+      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.875rem', fontWeight: 900, letterSpacing: '-0.025em', color: 'hsl(var(--foreground))', marginBottom: 4 }}>
+            Welcome back, {user?.displayName}
+          </h1>
+          <p style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+            World Cup 2026 — here's how you're doing.
+          </p>
+        </div>
+        <Link to="/predictions" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontSize: '0.875rem' }}>
+          <span>◎</span> Predictions
+        </Link>
+      </div>
+
+      <div style={{ background: 'linear-gradient(180deg, rgba(255,193,7,0.1) 0%, rgba(255,193,7,0.02) 100%)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: 12, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div style={{ color: '#FFC107', fontSize: '1.5rem' }}>⏱️</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--foreground))', marginBottom: 2 }}>
+              Group Stage – Matchdays 2&3 predictions close in <span style={{ color: '#FFC107' }}>2d 20h 57m</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>29/48 predicted</div>
+          </div>
+        </div>
+        <Link to="/predictions" className="btn-ghost" style={{ border: '1px solid hsl(var(--border))', background: 'transparent' }}>◎ Predict</Link>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
         {[
-          { label: 'Global Rank', value: stats.rank ? `#${stats.rank}` : '—' },
-          { label: 'Total Points', value: stats.totalPoints },
-          { label: 'Exact Scores', value: stats.exactScores },
-          { label: 'Predictions', value: stats.predictions },
+          { label: 'GLOBAL RANK', value: stats.rank ? `#${stats.rank}` : '—', icon: '🏆', accent: false },
+          { label: 'TOTAL POINTS', value: stats.totalPoints, icon: '⭐', accent: true },
+          { label: 'EXACT SCORES', value: stats.exactScores, icon: '🎯', accent: false },
+          { label: 'PREDICTIONS', value: stats.predictions, icon: '☑️', accent: false },
         ].map(s => (
-          <div key={s.label} className="card" style={{ padding: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))', marginBottom: 8 }}>
-              {s.label}
+          <div key={s.label} className="card" style={{ padding: 20, border: s.accent ? '1px solid #FFC107' : undefined }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))' }}>
+                {s.label}
+              </div>
+              <div style={{ fontSize: '1rem', color: s.accent ? '#FFC107' : 'hsl(var(--muted-foreground))' }}>{s.icon}</div>
             </div>
-            <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2rem', fontWeight: 900, color: 'hsl(var(--foreground))' }}>
+            <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2rem', fontWeight: 900, color: s.accent ? '#FFC107' : 'hsl(var(--foreground))' }}>
               {s.value}
             </div>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.125rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', color: 'hsl(var(--foreground))', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#FFC107' }}>🛡️</span> Your Arenas
+          </h2>
+          <Link to="/arenas" style={{ fontSize: '0.75rem', color: '#FFC107', fontWeight: 700, textDecoration: 'none' }}>All arenas →</Link>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          {arenas.filter(a => a.isMember).length === 0 ? (
+            <div className="card" style={{ padding: 24, textAlign: 'center', gridColumn: '1 / -1', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+              You haven't joined any arenas yet.
+            </div>
+          ) : arenas.filter(a => a.isMember).map(a => (
+            <div key={a.id} className="card" style={{ padding: '16px 20px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))', marginBottom: 8 }}>{a.name}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.5rem', fontWeight: 900, color: '#FFC107' }}>#1</span>
+                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>of {a.membersCount}</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginTop: 4 }}>0 pts</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -395,7 +461,7 @@ function MatchCard({ match }) {
   const isLive = match.status === 'live'
   const hasScore = isCompleted || isLive
 
-  const groupLabel = match.groupName ? `Group ${match.groupName}` : (match.stage ? stageLabel(match.stage) : '')
+  const groupLabel = stageLabel(match.stage || 'group_stage').toUpperCase()
   const dateStr = match.scheduledAt
     ? new Date(match.scheduledAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : ''

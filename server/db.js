@@ -110,16 +110,13 @@ function seed() {
   }
 
   // Matches (World Cup 2026)
-  // Reseed if: not enough matches, OR existing matches are missing flag data
-  const existingMatches = matches.all();
-  const missingFlags = existingMatches.some(m => !m.home_flag);
-  if (existingMatches.length < 104 || missingFlags) {
-    matches.delete(() => true);
-    for (const match of matchSeeds) {
-      matches.insert(match);
-    }
-    console.log(`✅ ${matchSeeds.length} matches seeded (forced reseed: ${missingFlags ? 'flags were missing' : 'count was low'})`);
+  // Force reseed unconditionally for this deployment to fix old wrong data
+  matches.delete(() => true);
+  for (const match of matchSeeds) {
+    matches.insert(match);
   }
+  console.log(`✅ ${matchSeeds.length} matches seeded (forced reseed)`);
+
 
 }
 
