@@ -1,0 +1,32 @@
+name: API-Sports Live Scores Sync
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Runs every 5 minutes
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  sync_live_scores:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Vercel Cron Endpoint
+        run: |
+          if [ -z "${{ secrets.VERCEL_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "Secrets VERCEL_URL or CRON_SECRET are not set. Skipping execution."
+            exit 0
+          fi
+          
+          # Remove trailing slash from URL if present
+          URL="${{ secrets.VERCEL_URL }}"
+          URL="${URL%/}"
+          
+          echo "Pinging $URL/api/cron..."
+          
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$URL/api/cron" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Failed to sync! HTTP Status: $HTTP_STATUS"
+            exit 1
+          else
+            echo "Successfully synced Live Scores!"
+          fi
