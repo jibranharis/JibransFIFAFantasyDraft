@@ -298,6 +298,30 @@ function AuthPage() {
 // ============================================================
 // Home page
 // ============================================================
+function CountdownTimer({ deadline }) {
+  const [timeLeft, setTimeLeft] = useState('')
+  
+  useEffect(() => {
+    const update = () => {
+      const now = new Date().getTime()
+      const diff = deadline - now
+      if (diff <= 0) {
+        setTimeLeft('Predictions Closed')
+        return
+      }
+      const h = Math.floor(diff / (1000 * 60 * 60))
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const s = Math.floor((diff % (1000 * 60)) / 1000)
+      setTimeLeft(`${h}h ${m}m ${s}s`)
+    }
+    update()
+    const int = setInterval(update, 1000)
+    return () => clearInterval(int)
+  }, [deadline])
+
+  return <span style={{ fontFamily: 'monospace', fontSize: '1.1em', background: 'rgba(255,193,7,0.15)', padding: '2px 6px', borderRadius: 4, color: '#FFC107' }}>{timeLeft}</span>
+}
+
 function HomePage() {
   const { user } = useAuth()
   const [stats, setStats] = useState({ rank: null, totalPoints: 0, exactScores: 0, predictions: 0 })
@@ -334,6 +358,9 @@ function HomePage() {
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
 
+  const nextGame = upcoming[0]
+  const nextDeadline = nextGame ? new Date(nextGame.scheduledAt).getTime() - 60 * 60 * 1000 : null
+
   return (
     <div style={{ padding: '32px', maxWidth: 1024, margin: '0 auto' }}>
       <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -354,8 +381,14 @@ function HomePage() {
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div style={{ color: '#FFC107', fontSize: '1.5rem' }}>⏱️</div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--foreground))', marginBottom: 2 }}>
-              Group Stage predictions are open!
+            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--foreground))', marginBottom: 6 }}>
+              {nextDeadline && nextDeadline > new Date().getTime() ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Next prediction due in: <CountdownTimer deadline={nextDeadline} />
+                </div>
+              ) : (
+                <span>Group Stage predictions are open!</span>
+              )}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{stats.predictions}/104 predicted</div>
           </div>
@@ -775,7 +808,7 @@ function PredictionsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
-            const isMatchLocked = new Date() > new Date(match.scheduledAt)
+            const isMatchLocked = new Date().getTime() > new Date(match.scheduledAt).getTime() - 60 * 60 * 1000
             const canEdit = user?.isAdmin || !isMatchLocked
 
             return (
