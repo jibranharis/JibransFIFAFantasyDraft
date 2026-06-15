@@ -749,7 +749,8 @@ function PredictionsPage() {
     if (s?.home === undefined || s?.away === undefined || s?.home === '' || s?.away === '') return
     setSaving(v => ({ ...v, [matchId]: true }))
     try {
-      await supabase.from('predictions').upsert({ user_id: user.id, match_id: matchId, home_score: parseInt(s.home), away_score: parseInt(s.away) }, { onConflict: 'user_id,match_id' })
+      const { error } = await supabase.from('predictions').upsert({ user_id: user.id, match_id: matchId, home_score: parseInt(s.home), away_score: parseInt(s.away) }, { onConflict: 'user_id,match_id' })
+      if (error) throw error
       toast('success', 'Prediction saved! ⚽')
     } catch (err) {
       toast('error', 'Failed to save', err.message)
@@ -1456,11 +1457,11 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+      setUser(session?.user ? { ...session.user, displayName: session.user.user_metadata?.display_name, isAdmin: session.user.email === 'admin@futbol.com' || session.user.email?.includes('admin') } : null)
       setAuthLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+      setUser(session?.user ? { ...session.user, displayName: session.user.user_metadata?.display_name, isAdmin: session.user.email === 'admin@futbol.com' || session.user.email?.includes('admin') } : null)
     })
     return () => subscription.unsubscribe()
   }, [])
