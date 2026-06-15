@@ -992,16 +992,105 @@ function LeaderboardPage() {
 // Groups page
 // ============================================================
 function GroupsPage() {
+  const [matches, setMatches] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('matches').select('*').eq('stage', 'group_stage').then(r => {
+      setMatches((r.data || []).map(formatMatch))
+    }).finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
+
+  const groups = {}
+  matches.forEach(m => {
+    const g = m.groupName || 'Group A'
+    if (!groups[g]) groups[g] = {}
+    
+    if (!groups[g][m.homeTeam] && m.homeTeam) groups[g][m.homeTeam] = { name: m.homeTeam, flag: m.homeFlag, flagUrl: m.homeFlagUrl, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 }
+    if (!groups[g][m.awayTeam] && m.awayTeam) groups[g][m.awayTeam] = { name: m.awayTeam, flag: m.awayFlag, flagUrl: m.awayFlagUrl, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 }
+
+    if (m.status === 'completed') {
+      const ht = groups[g][m.homeTeam]
+      const at = groups[g][m.awayTeam]
+      ht.p++; at.p++;
+      ht.gf += m.homeScore; ht.ga += m.awayScore;
+      at.gf += m.awayScore; at.ga += m.homeScore;
+      ht.gd = ht.gf - ht.ga; at.gd = at.gf - at.ga;
+      
+      if (m.homeScore > m.awayScore) { ht.w++; ht.pts += 3; at.l++; }
+      else if (m.homeScore < m.awayScore) { at.w++; at.pts += 3; ht.l++; }
+      else { ht.d++; at.d++; ht.pts += 1; at.pts += 1; }
+    }
+  })
+
+  const sortedGroups = Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0])).map(([name, teams]) => {
+    const sortedTeams = Object.values(teams).sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      if (b.gf !== a.gf) return b.gf - a.gf;
+      return a.name.localeCompare(b.name);
+    })
+    return { name, teams: sortedTeams }
+  })
+
   return (
-    <div style={{ padding: '32px', maxWidth: 1024, margin: '0 auto' }}>
+    <div style={{ padding: '32px', maxWidth: 1280, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">Groups</h1>
-        <p className="page-subtitle">World Cup 2026 Group Standings.</p>
+        <p className="page-subtitle">Standings across all 12 groups.</p>
       </div>
-      <div className="empty-state">
-        <div className="empty-state-icon">⚽</div>
-        <p>Group standings will appear here once the tournament begins.</p>
-      </div>
+
+      {sortedGroups.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">⚽</div>
+          <p>Group standings will appear here once the tournament begins.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(450px, 1fr))', gap: 24 }}>
+          {sortedGroups.map(g => (
+            <div key={g.name} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 24px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--foreground))' }}>
+                {g.name.toUpperCase()}
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.02)', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>
+                      <th style={{ padding: '12px 24px', textAlign: 'center', width: 40 }}>#</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Team</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>P</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>W</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>D</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>L</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 40 }}>GD</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'center', width: 40, color: '#FFC107', fontWeight: 900 }}>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.teams.map((t, i) => (
+                      <tr key={t.name} style={{ borderTop: '1px solid hsl(var(--border) / 0.5)' }}>
+                        <td style={{ padding: '16px 24px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{i + 1}</td>
+                        <td style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, color: 'hsl(var(--foreground))', whiteSpace: 'nowrap' }}>
+                          {t.flagUrl ? <img src={t.flagUrl} alt="" style={{ width: 24, height: 16, objectFit: 'cover', borderRadius: 2 }} /> : <span>{t.flag}</span>}
+                          {t.name}
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.p}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.w}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.d}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.l}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--foreground))' }}>{t.gd > 0 ? `+${t.gd}` : t.gd}</td>
+                        <td style={{ padding: '16px 24px', textAlign: 'center', fontWeight: 900, color: '#FFC107', fontSize: '1.1rem' }}>{t.pts}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
