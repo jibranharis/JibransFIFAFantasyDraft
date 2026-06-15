@@ -3,6 +3,7 @@ import session from 'express-session';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 
 import './db.js'; // initializes data on startup
 import authRoutes from './routes/auth.js';
@@ -15,9 +16,10 @@ import adminRoutes from './routes/admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+const isProd = process.env.NODE_ENV === 'production';
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: isProd ? false : 'http://localhost:3001', credentials: true }));
 app.use(express.json());
 app.use(session({
   secret: 'futbol-is-life-secret-2026',
@@ -45,6 +47,13 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/arenas', arenaRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Serve built frontend in production
+const distPath = join(__dirname, '..', 'dist');
+if (isProd && existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => res.sendFile(join(distPath, 'index.html')));
+}
+
 app.listen(PORT, () => {
-  console.log(`⚽ Fútbol is Life server running on http://localhost:${PORT}`);
+  console.log(`🏆 Jibran's FIFA Fantasy Draft running on http://localhost:${PORT}`);
 });
