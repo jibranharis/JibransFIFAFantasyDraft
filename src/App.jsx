@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom'
+import { supabase } from './supabaseClient'
 import './design.css'
 
 // ============================================================
@@ -13,12 +14,6 @@ export const useToast = () => useContext(ToastContext)
 // ============================================================
 // API helper
 // ============================================================
-async function api(path, opts = {}) {
-  const res = await fetch(path, { credentials: 'include', ...opts })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
-  return data
-}
 
 // ============================================================
 // Utility
@@ -231,17 +226,8 @@ function AuthPage() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
-      const body = mode === 'login'
-        ? { email: form.email, password: form.password }
-        : { email: form.email, password: form.password, displayName: form.displayName }
-      const data = await api(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-      login(data.user)
-      toast('success', mode === 'login' ? 'Welcome back!' : 'Account created!', `Signed in as ${data.user.displayName}`)
+      await login(form.email, form.password, mode === 'register', form.displayName)
+      toast('success', mode === 'login' ? 'Welcome back!' : 'Account created!', `Signed in as ${form.displayName || form.email}`)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -308,17 +294,26 @@ function HomePage() {
 
   useEffect(() => {
     Promise.all([
-      api('/api/matches').then(r => r.matches || r),
-      api('/api/leaderboard').then(r => r.leaderboard || r),
-      api('/api/arenas').then(r => r.arenas || r)
-    ]).then(([matches, lb, a]) => {
-      setRecentCompleted(matches.filter(m => m.status === 'completed' && m.userPrediction).slice(0, 5))
-      setUpcoming(matches.filter(m => m.status === 'scheduled').slice(0, 3))
-      setTopPredictors(lb.slice(0, 5))
-      setArenas(a)
-      const me = lb.find(p => p.userId === user?.id)
-      if (me) setStats({ rank: me.rank, totalPoints: me.totalPoints || 0, exactScores: me.exactScores || 0, predictions: me.predictionsCount || 0 })
-    }).catch(() => {}).finally(() => setLoading(false))
+      supabase.from('matches').select('*').order('scheduled_at', { ascending: true }),
+      supabase.from('leaderboard').select('*').order('total_points', { ascending: false }),
+      supabase.from('arenas').select('*, arena_members(user_id)')
+    ]).then(([{data: matches}, {data: lb}, {data: a}]) => {
+      matches = matches || []
+      lb = lb || []
+      const arenasData = (a || []).map(ar => ({ ...ar, isMember: ar.arena_members.some(m => m.user_id === user?.id), membersCount: ar.arena_members.length }))
+      // TODO: get user predictions to map recentCompleted
+      supabase.from('predictions').select('*').eq('user_id', user?.id).then(({data: myPreds}) => {
+        const pMap = (myPreds || []).reduce((acc, p) => ({ ...acc, [p.match_id]: p }), {})
+        const matchesWithPreds = matches.map(m => ({ ...m, userPrediction: pMap[m.id] }))
+        
+        setRecentCompleted(matchesWithPreds.filter(m => m.status === 'completed' && m.userPrediction).slice(0, 5))
+        setUpcoming(matchesWithPreds.filter(m => m.status === 'scheduled').slice(0, 3))
+        setTopPredictors(lb.slice(0, 5))
+        setArenas(arenasData)
+        const me = lb.find(p => p.user_id === user?.id)
+        if (me) setStats({ rank: lb.findIndex(x => x.user_id === user?.id) + 1, totalPoints: me.total_points || 0, exactScores: me.exact_scores || 0, predictions: me.predictions_count || 0 })
+      }).finally(() => setLoading(false))
+    })
   }, [user?.id])
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
@@ -537,7 +532,7 @@ function MatchesPage() {
   const [activeStage, setActiveStage] = useState(null)
 
   useEffect(() => {
-    api('/api/matches')
+    supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => ({ matches: r.data || [] }))
       .then(r => {
         const m = r.matches || r
         setMatches(m)
@@ -666,8 +661,8 @@ function PredictionsPage() {
 
   useEffect(() => {
     Promise.all([
-      api('/api/matches').then(r => r.matches || r),
-      api('/api/rounds').then(r => r.rounds || r)
+      supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => r.data || []),
+      Promise.resolve([])
     ]).then(([m, r]) => {
       setMatches(m)
       setRounds(r)
@@ -695,11 +690,7 @@ function PredictionsPage() {
     if (s?.home === undefined || s?.away === undefined || s?.home === '' || s?.away === '') return
     setSaving(v => ({ ...v, [matchId]: true }))
     try {
-      await api('/api/predictions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId, homeScore: parseInt(s.home), awayScore: parseInt(s.away) })
-      })
+      await supabase.from('predictions').upsert({ user_id: user.id, match_id: matchId, home_score: parseInt(s.home), away_score: parseInt(s.away) }, { onConflict: 'user_id,match_id' })
       toast('success', 'Prediction saved! ⚽')
     } catch (err) {
       toast('error', 'Failed to save', err.message)
@@ -862,7 +853,7 @@ function LeaderboardPage() {
   const { user } = useAuth()
 
   useEffect(() => {
-    api('/api/leaderboard').then(r => setData(r.leaderboard || r)).finally(() => setLoading(false))
+    supabase.from('leaderboard').select('*').order('total_points', { ascending: false }).then(r => setData(r.data || [])).finally(() => setLoading(false))
   }, [])
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
@@ -998,12 +989,18 @@ function ArenasPage() {
   const [joinCode, setJoinCode] = useState('')
   const [newArenaName, setNewArenaName] = useState('')
 
-  const load = () => api('/api/arenas').then(r => setArenas(r.arenas || r)).finally(() => setLoading(false))
+  const load = () => supabase.from('arenas').select('*, profiles!arenas_owner_id_fkey(display_name), arena_members(user_id)').then(r => {
+      const formatted = (r.data || []).map(a => ({ ...a, ownerName: a.profiles?.display_name, membersCount: a.arena_members.length, isMember: a.arena_members.some(m => m.user_id === user?.id) }))
+      setArenas(formatted)
+    }).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
   const join = async () => {
     try {
-      const data = await api(`/api/arenas/join/${joinCode.trim().toUpperCase()}`, { method: 'POST' })
+      const data = const { data: arena } = await supabase.from('arenas').select('id').eq('code', joinCode.trim().toUpperCase()).single()
+      if (!arena) throw new Error('Arena not found')
+      const { error } = await supabase.from('arena_members').insert({ arena_id: arena.id, user_id: user.id })
+      if (error) throw error
       toast('success', `Joined ${data.arenaName}! 🏟️`)
       setJoinCode(''); load()
     } catch (err) {
@@ -1014,7 +1011,10 @@ function ArenasPage() {
   const createArena = async () => {
     if (!newArenaName.trim()) return
     try {
-      await api('/api/admin/arenas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newArenaName }) })
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+      const { data, error } = await supabase.from('arenas').insert({ id: crypto.randomUUID(), name: newArenaName, owner_id: user.id, code }).select().single()
+      if (error) throw error
+      await supabase.from('arena_members').insert({ arena_id: data.id, user_id: user.id })
       toast('success', 'Arena created!')
       setNewArenaName(''); load()
     } catch (err) {
@@ -1095,7 +1095,10 @@ function JoinArenaPage() {
 
   useEffect(() => {
     if (code) {
-      api(`/api/arenas/join/${code.trim().toUpperCase()}`, { method: 'POST' })
+      supabase.from('arenas').select('id').eq('code', code.trim().toUpperCase()).single().then(({data: arena}) => {
+        if (!arena) throw new Error('Arena not found')
+        return supabase.from('arena_members').insert({ arena_id: arena.id, user_id: user.id })
+      })
         .then(data => {
           toast('success', `Joined ${data.arenaName}! 🏟️`);
         })
@@ -1125,15 +1128,17 @@ function AdminPage() {
   const { toast } = useToast()
 
   const load = () => Promise.all([
-    api('/api/matches').then(r => r.matches || r),
-    api('/api/rounds').then(r => r.rounds || r),
-    api('/api/admin/predictions').then(r => r.users || [])
+    supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => r.data || []),
+    Promise.resolve([]),
+    supabase.from('profiles').select('id, display_name, predictions(match_id, home_score, away_score)').then(r => {
+      return (r.data || []).map(u => ({ id: u.id, displayName: u.display_name, predictions: u.predictions }))
+    })
   ]).then(([m, r, p]) => { setMatches(m); setRounds(r); setAllPredictions(p); })
   useEffect(() => { load() }, [])
 
   const setMatchStatus = async (matchId, status) => {
     try {
-      await api(`/api/admin/matches/${matchId}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+      await supabase.from('matches').update({ status }).eq('id', matchId)
       toast('success', `Match marked as ${status}`)
       load()
     } catch (err) {
@@ -1145,7 +1150,7 @@ function AdminPage() {
     const r = resultInputs[matchId]
     if (!r || r.home === undefined || r.away === undefined) return
     try {
-      await api(`/api/admin/matches/${matchId}/result`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ homeScore: parseInt(r.home), awayScore: parseInt(r.away) }) })
+      await supabase.from('matches').update({ home_score: parseInt(r.home), away_score: parseInt(r.away) }).eq('id', matchId)
       toast('success', 'Result saved! Points calculated.')
       load()
     } catch (err) {
@@ -1160,7 +1165,7 @@ function AdminPage() {
       return m.stage === roundSlug
     })
     for (const m of roundMatches) {
-      await api(`/api/admin/matches/${m.id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: lock ? 'live' : 'scheduled' }) })
+      await supabase.from('matches').update({ status: lock ? 'live' : 'scheduled' }).eq('id', m.id)
     }
     toast('success', lock ? '🔒 Round locked' : '🔓 Round unlocked')
     load()
@@ -1315,12 +1320,30 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    api('/api/auth/user').then(d => setUser(d.user || null)).catch(() => setUser(null)).finally(() => setAuthLoading(false))
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
-  const login = useCallback((u) => setUser(u), [])
+  const login = useCallback(async (email, password, isRegister, displayName) => {
+    if (isRegister) {
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
+      if (error) throw error
+      return data.user
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      return data.user
+    }
+  }, [])
+
   const logout = useCallback(async () => {
-    await api('/api/auth/logout', { method: 'POST' }).catch(() => {})
+    await supabase.auth.signOut()
     setUser(null)
   }, [])
 
