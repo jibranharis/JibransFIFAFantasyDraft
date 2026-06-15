@@ -61,6 +61,11 @@ export default async function handler(req, res) {
 
       if (!dbMatch) continue;
 
+      // DO NOT revert mock 'completed' data if API says 'scheduled' because the real WC26 hasn't started
+      if (dbMatch.status === 'completed' && ['NS', 'TBD', 'PST', 'CANC'].includes(matchStatus)) {
+        continue;
+      }
+
       let newStatus = dbMatch.status;
       if (['1H', 'HT', '2H', 'ET', 'P', 'LIVE'].includes(matchStatus)) newStatus = 'live';
       if (['FT', 'AET', 'PEN'].includes(matchStatus)) newStatus = 'completed';
