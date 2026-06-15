@@ -1,6 +1,7 @@
 import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import { matchSeeds } from './matchesData.js';
 
 const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/futbol";
 const client = new MongoClient(uri);
@@ -112,90 +113,12 @@ function seed() {
   if (matches.all().length < 104) {
     // Delete old demo matches
     matches.delete(() => true);
-    const defaultMatches = [];
-    let matchId = 1;
-    let baseDate = new Date('2026-06-11T12:00:00Z'); // World Cup start date
-
-    // 1. Group Stage (12 Groups, 6 matches each = 72 matches)
-    const groups = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-    for (const group of groups) {
-      for (let day = 1; day <= 3; day++) {
-        for (let m = 0; m < 2; m++) {
-          const mDate = new Date(baseDate);
-          mDate.setDate(mDate.getDate() + day - 1);
-          mDate.setHours(12 + m * 3);
-          
-          defaultMatches.push({
-            id: matchId++,
-            home_team: `Team ${m * 2 + 1} (${group})`,
-            away_team: `Team ${m * 2 + 2} (${group})`,
-            home_flag: '🌍',
-            away_flag: '🌍',
-            stage: 'group_stage',
-            match_day: day,
-            scheduled_at: mDate.toISOString(),
-            status: 'scheduled',
-            home_score: null,
-            away_score: null,
-            group_name: group,
-          });
-        }
-      }
-    }
-
-    // 2. Knockout Stage Setup
-    const knockoutStages = [
-      { name: 'Round of 32', count: 16, startDay: 15 },
-      { name: 'Round of 16', count: 8, startDay: 20 },
-      { name: 'Quarter-finals', count: 4, startDay: 25 },
-      { name: 'Semi-finals', count: 2, startDay: 30 },
-      { name: 'Third place', count: 1, startDay: 33 },
-      { name: 'Final', count: 1, startDay: 34 }
-    ];
-
-    for (const stage of knockoutStages) {
-      for (let i = 0; i < stage.count; i++) {
-        const mDate = new Date(baseDate);
-        mDate.setDate(mDate.getDate() + stage.startDay + Math.floor(i / 2));
-        mDate.setHours(12 + (i % 2) * 4);
-
-        defaultMatches.push({
-          id: matchId++,
-          home_team: `TBD Home ${i+1}`,
-          away_team: `TBD Away ${i+1}`,
-          home_flag: '❓',
-          away_flag: '❓',
-          stage: stage.name,
-          match_day: null,
-          scheduled_at: mDate.toISOString(),
-          status: 'scheduled',
-          home_score: null,
-          away_score: null,
-          group_name: null,
-        });
-      }
-    }
-
-    // Override the first match to be Mexico vs Ecuador
-    if (defaultMatches[0]) {
-      defaultMatches[0].home_team = 'Mexico';
-      defaultMatches[0].home_flag = '🇲🇽';
-      defaultMatches[0].away_team = 'Ecuador';
-      defaultMatches[0].away_flag = '🇪🇨';
-    }
-
-    // Simulate some completed matches on Day 1 for the dashboard to look alive
-    for (let i = 0; i < 4; i++) {
-      defaultMatches[i].status = 'completed';
-      defaultMatches[i].home_score = Math.floor(Math.random() * 4);
-      defaultMatches[i].away_score = Math.floor(Math.random() * 4);
-    }
-
-    for (const match of defaultMatches) {
+    
+    // Seed from accurate data
+    for (const match of matchSeeds) {
       matches.insert(match);
-      // Removed calculatePoints because it doesn't exist here
     }
-    console.log(`✅ ${defaultMatches.length} matches seeded`);
+    console.log(`✅ ${matchSeeds.length} matches seeded`);
   }
 }
 

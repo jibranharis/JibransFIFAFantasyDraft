@@ -143,35 +143,42 @@ function AuthPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-logo">🏆 Fútbol is Life</div>
-        <div className="auth-sub">World Cup 2026 Predictions</div>
-        <form onSubmit={submit}>
+    <div className="min-h-screen bg-[#0A1128] flex items-center justify-center p-4">
+      <div className="bg-[#151e32] border border-white/5 rounded-3xl p-8 md:p-12 w-full max-w-md shadow-2xl">
+        <div className="flex flex-col items-center mb-8">
+          <div className="text-4xl mb-4 p-4 bg-white/5 rounded-2xl border border-white/5">🏆</div>
+          <h1 className="text-2xl font-black text-white tracking-tight">Fútbol is Life</h1>
+          <p className="text-slate-400 text-sm mt-1">World Cup 2026 Predictions</p>
+        </div>
+
+        <form onSubmit={submit} className="flex flex-col gap-4">
           {mode === 'register' && (
-            <div className="form-group">
-              <label className="form-label">Display Name</label>
-              <input className="form-input" placeholder="Your name" value={form.displayName} onChange={set('displayName')} required />
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Display Name</label>
+              <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none transition-all" placeholder="Your name" value={form.displayName} onChange={set('displayName')} required />
             </div>
           )}
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input className="form-input" type="email" placeholder="you@example.com" value={form.email} onChange={set('email')} required />
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+            <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none transition-all" type="email" placeholder="you@example.com" value={form.email} onChange={set('email')} required />
           </div>
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input className="form-input" type="password" placeholder="Password" value={form.password} onChange={set('password')} required minLength={mode === 'register' ? 6 : 1} />
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+            <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none transition-all" type="password" placeholder="Password" value={form.password} onChange={set('password')} required minLength={mode === 'register' ? 6 : 1} />
           </div>
-          {error && <div className="form-error">{error}</div>}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 16, padding: '12px', justifyContent: 'center' }} disabled={loading}>
+          
+          {error && <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm px-4 py-3 rounded-xl">{error}</div>}
+          
+          <button type="submit" className="w-full bg-[#FFD700] hover:bg-[#e6c200] text-black font-black text-lg py-4 rounded-xl mt-4 transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none" disabled={loading}>
             {loading ? '...' : mode === 'login' ? 'Sign In' : 'Create Account'}
           </button>
         </form>
-        <div className="auth-toggle">
+
+        <div className="mt-8 text-center text-sm text-slate-400">
           {mode === 'login' ? (
-            <>Don't have an account? <button onClick={() => setMode('register')}>Register</button></>
+            <>Don't have an account? <button className="text-white font-bold hover:text-[#FFD700]" onClick={() => setMode('register')}>Register</button></>
           ) : (
-            <>Already have an account? <button onClick={() => setMode('login')}>Sign in</button></>
+            <>Already have an account? <button className="text-white font-bold hover:text-[#FFD700]" onClick={() => setMode('login')}>Sign in</button></>
           )}
         </div>
       </div>
@@ -183,7 +190,7 @@ function AuthPage() {
 function HomePage() {
   const { user } = useAuth()
   
-  const [stats, setStats] = useState({ rank: 62, totalPoints: 0, exactScores: 0, predictions: 29 })
+  const [stats, setStats] = useState({ rank: 1, totalPoints: 0, exactScores: 0, predictions: 0 })
   const [arenas, setArenas] = useState([])
   const [topPredictors, setTopPredictors] = useState([])
   
@@ -194,7 +201,7 @@ function HomePage() {
       setTopPredictors(lb.slice(0, 5))
       const me = lb.find(p => p.userId === user?.id);
       if (me) {
-        setStats({ rank: me.rank || 62, totalPoints: me.totalPoints || 0, exactScores: me.exactScores || 0, predictions: me.correctOutcomes || 29 })
+        setStats({ rank: me.rank || 1, totalPoints: me.totalPoints || 0, exactScores: me.exactScores || 0, predictions: me.predictionsCount || 0 })
       }
     }).catch(() => {})
   }, [user?.id])
@@ -227,65 +234,94 @@ function HomePage() {
   const pad = n => n.toString().padStart(2, '0')
 
   return (
-    <div className="page-content">
-      <div className="welcome-banner" style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
-          Welcome back, {user?.displayName || 'Player'}
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Ready for the next match?</p>
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-12">
+        <h1 className="text-4xl font-black text-white tracking-tight mb-2">Welcome back, {user?.displayName}</h1>
+        <p className="text-xl text-slate-400">Ready for the next match?</p>
       </div>
 
-      <div className="countdown-card card" style={{ marginBottom: 32, textAlign: 'center', padding: '40px' }}>
-        <h3 style={{ color: 'var(--primary)', marginBottom: 16, fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', letterSpacing: 2, fontSize: '1rem' }}>Next Round Locks In</h3>
-        <div style={{ fontSize: '3rem', fontWeight: 900, fontFamily: 'Outfit, sans-serif', display: 'flex', justifyContent: 'center', gap: 16 }}>
-          <span>{pad(timeLeft.days)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Days</span></span><span style={{ color: 'var(--surface-border)' }}>:</span>
-          <span>{pad(timeLeft.hours)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Hours</span></span><span style={{ color: 'var(--surface-border)' }}>:</span>
-          <span>{pad(timeLeft.minutes)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Mins</span></span><span style={{ color: 'var(--surface-border)' }}>:</span>
-          <span>{pad(timeLeft.seconds)}<span style={{ fontSize: '1rem', display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Secs</span></span>
-        </div>
-      </div>
-
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24, marginBottom: 40 }}>
-        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Global Rank</div>
-          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900, color: 'var(--primary)' }}>#{stats.rank}</div>
-        </div>
-        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Total Points</div>
-          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900 }}>{stats.totalPoints}</div>
-        </div>
-        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Exact Scores</div>
-          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900 }}>{stats.exactScores}</div>
-        </div>
-        <div className="stat-card card" style={{ padding: 24, textAlign: 'center', marginBottom: 0 }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>Predictions</div>
-          <div style={{ fontSize: '2.5rem', fontFamily: 'Outfit, sans-serif', fontWeight: 900 }}>{stats.predictions}</div>
+      <div className="bg-[#151e32] border border-white/5 rounded-3xl p-8 md:p-12 mb-12 flex flex-col items-center shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FFD700] to-transparent"></div>
+        <div className="text-[#FFD700] text-sm font-black uppercase tracking-[0.2em] mb-6">Next Round Locks In</div>
+        
+        <div className="flex items-center justify-center gap-4 md:gap-8 text-white font-black text-4xl md:text-6xl tracking-tighter">
+          <div className="flex flex-col items-center">
+            <span>{pad(timeLeft.days)}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Days</span>
+          </div>
+          <span className="text-slate-700 pb-6">:</span>
+          <div className="flex flex-col items-center">
+            <span>{pad(timeLeft.hours)}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Hours</span>
+          </div>
+          <span className="text-slate-700 pb-6">:</span>
+          <div className="flex flex-col items-center">
+            <span>{pad(timeLeft.minutes)}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Mins</span>
+          </div>
+          <span className="text-slate-700 pb-6">:</span>
+          <div className="flex flex-col items-center">
+            <span>{pad(timeLeft.seconds)}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Secs</span>
+          </div>
         </div>
       </div>
 
-      <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
-        <div className="left-side card" style={{ padding: 24, marginBottom: 0 }}>
-          <h3 style={{ marginBottom: 20, fontFamily: 'Outfit, sans-serif', fontSize: '1.4rem' }}>Your Arenas</h3>
-          {arenas.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No arenas yet.</div>
-          ) : arenas.map(a => (
-            <div key={a.id} className="arena-row" style={{ padding: '16px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{a.name}</span>
-              <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>{a.memberCount} members</span>
-            </div>
-          ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        <div className="bg-[#151e32] border border-white/5 rounded-2xl p-6 text-center shadow-lg">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Global Rank</div>
+          <div className="text-4xl font-black text-white">#{stats.rank}</div>
         </div>
-        <div className="right-side card" style={{ padding: 24, marginBottom: 0 }}>
-          <h3 style={{ marginBottom: 20, fontFamily: 'Outfit, sans-serif', fontSize: '1.4rem' }}>Top Predictors</h3>
-          {topPredictors.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No predictors yet.</div>
-          ) : topPredictors.map((p, i) => (
-            <div key={p.userId} className="predictor-row" style={{ padding: '16px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}><strong style={{ color: 'var(--text-muted)', marginRight: 12 }}>#{i+1}</strong> {p.username}</span>
-              <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{p.totalPoints} pts</span>
-            </div>
-          ))}
+        <div className="bg-[#151e32] border border-white/5 rounded-2xl p-6 text-center shadow-lg">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Points</div>
+          <div className="text-4xl font-black text-white">{stats.totalPoints}</div>
+        </div>
+        <div className="bg-[#151e32] border border-white/5 rounded-2xl p-6 text-center shadow-lg">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Exact Scores</div>
+          <div className="text-4xl font-black text-white">{stats.exactScores}</div>
+        </div>
+        <div className="bg-[#151e32] border border-white/5 rounded-2xl p-6 text-center shadow-lg">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Predictions</div>
+          <div className="text-4xl font-black text-white">{stats.predictions}</div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        <div>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+            <span className="text-[#FFD700]">🏰</span> Your Arenas
+          </h2>
+          <div className="bg-[#151e32] border border-white/5 rounded-2xl overflow-hidden">
+            {arenas.length === 0 ? (
+              <div className="p-8 text-center text-slate-400">You haven't joined any arenas yet.</div>
+            ) : arenas.map(a => (
+              <div key={a.id} className="p-4 border-b border-white/5 last:border-0 flex justify-between items-center hover:bg-white/[0.02] transition-colors">
+                <div className="font-bold text-white">{a.name}</div>
+                <div className="text-xs text-slate-400 bg-black/40 px-3 py-1 rounded-full">{a.memberCount} members</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+            <span className="text-[#FFD700]">🔥</span> Top Predictors
+          </h2>
+          <div className="bg-[#151e32] border border-white/5 rounded-2xl overflow-hidden">
+            {topPredictors.length === 0 ? (
+              <div className="p-8 text-center text-slate-400">No predictions yet.</div>
+            ) : topPredictors.map((p, i) => (
+              <div key={p.userId} className="p-4 border-b border-white/5 last:border-0 flex justify-between items-center hover:bg-white/[0.02] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${i===0?'bg-yellow-500 text-black':i===1?'bg-slate-300 text-black':i===2?'bg-amber-600 text-white':'bg-white/10 text-white'}`}>
+                    {i+1}
+                  </div>
+                  <div className="font-bold text-white">{p.username}</div>
+                </div>
+                <div className="font-black text-white">{p.totalPoints} <span className="text-xs text-slate-500 font-normal">pts</span></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -723,40 +759,49 @@ function ArenasPage() {
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
   return (
-    <div className="page-content">
-      <div className="page-title">🏟️ Arenas</div>
-      <div className="page-sub">Private groups with their own leaderboards.</div>
-
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header">Join an Arena</div>
-        <div className="card-body" style={{ display: 'flex', gap: 8 }}>
-          <input className="form-input" placeholder="Invite code (e.g. ABC12345)" value={joinCode} onChange={e => setJoinCode(e.target.value)} style={{ flex: 1 }} />
-          <button className="btn btn-primary" onClick={join} disabled={!joinCode.trim()}>Join</button>
-        </div>
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">🏟️</span>
+          Arenas
+        </h1>
+        <p className="text-slate-400 mt-2">Private groups with their own leaderboards.</p>
       </div>
 
-      {user?.isAdmin && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">⚡ Create Arena (Admin)</div>
-          <div className="card-body" style={{ display: 'flex', gap: 8 }}>
-            <input className="form-input" placeholder="Arena name" value={newArenaName} onChange={e => setNewArenaName(e.target.value)} style={{ flex: 1 }} />
-            <button className="btn btn-primary" onClick={createArena} disabled={!newArenaName.trim()}>Create</button>
+      <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="bg-[#151e32] border border-white/5 rounded-2xl p-6 shadow-lg">
+          <h2 className="text-xl font-black text-white mb-4">Join an Arena</h2>
+          <div className="flex gap-2">
+            <input className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none transition-all" placeholder="Invite code (e.g. ABC12345)" value={joinCode} onChange={e => setJoinCode(e.target.value)} />
+            <button className="bg-[#FFD700] hover:bg-[#e6c200] text-black font-black px-6 rounded-xl transition-all disabled:opacity-50" onClick={join} disabled={!joinCode.trim()}>Join</button>
           </div>
         </div>
-      )}
 
-      <div className="arenas-grid">
+        {user?.isAdmin && (
+          <div className="bg-[#151e32] border border-white/5 rounded-2xl p-6 shadow-lg">
+            <h2 className="text-xl font-black text-white mb-4">⚡ Create Arena (Admin)</h2>
+            <div className="flex gap-2">
+              <input className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] outline-none transition-all" placeholder="Arena name" value={newArenaName} onChange={e => setNewArenaName(e.target.value)} />
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-black px-6 rounded-xl transition-all disabled:opacity-50" onClick={createArena} disabled={!newArenaName.trim()}>Create</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
         {arenas.map(a => (
-          <div key={a.id} className="arena-card">
-            <div className="arena-name">{a.name}</div>
-            <div className="arena-meta">{a.memberCount} member{a.memberCount !== 1 ? 's' : ''}</div>
+          <div key={a.id} className="bg-[#151e32] border border-white/5 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-[#FFD700] to-amber-600 opacity-50 group-hover:opacity-100 transition-opacity left-0"></div>
+            <div className="text-xl font-black text-white mb-1 truncate">{a.name}</div>
+            <div className="text-sm font-bold text-slate-400 mb-4">{a.memberCount} member{a.memberCount !== 1 ? 's' : ''}</div>
+            
             {a.isMember && a.inviteCode && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: 4 }}>Invite code:</div>
-                <code style={{ background: 'var(--surface2)', padding: '3px 8px', borderRadius: 6, fontSize: '0.85rem', letterSpacing: 2 }}>{a.inviteCode}</code>
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <div className="text-[10px] font-bold uppercase text-slate-500 mb-2 tracking-widest">Invite Code</div>
+                <code className="bg-black/50 px-3 py-2 rounded-lg text-yellow-500 font-mono tracking-[0.2em] block text-center font-bold">{a.inviteCode}</code>
               </div>
             )}
-            {a.isMember && <span className="open-badge" style={{ marginTop: 8, display: 'inline-flex' }}>✓ Member</span>}
+            {a.isMember && <div className="absolute top-4 right-4 bg-green-500/20 text-green-500 text-[10px] font-black uppercase px-2 py-1 rounded-md border border-green-500/30">Member</div>}
           </div>
         ))}
       </div>
@@ -822,70 +867,66 @@ function AdminPage() {
     load()
   }
 
-  const roundMatchMap = {
-    group_stage_1: matches.filter(m => m.stage === 'group_stage' && m.matchDay === 1),
-    group_stage_2: matches.filter(m => m.stage === 'group_stage' && m.matchDay >= 2),
-  }
-
   return (
-    <div className="page-content">
-      <div className="page-title">⚙️ Admin Panel</div>
-      <div className="page-sub">Manage rounds, matches and results.</div>
+    <div className="page-content max-w-5xl mx-auto p-4 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <span className="bg-[#151e32] p-2 rounded-xl text-2xl border border-white/5">⚙️</span>
+          Admin Panel
+        </h1>
+        <p className="text-slate-400 mt-2">Manage rounds, matches and results.</p>
+      </div>
 
-      <div className="tabs">
-        <button className={`tab-btn ${activeTab === 'rounds' ? 'active' : ''}`} onClick={() => setActiveTab('rounds')}>Rounds</button>
-        <button className={`tab-btn ${activeTab === 'matches' ? 'active' : ''}`} onClick={() => setActiveTab('matches')}>Matches</button>
+      <div className="bg-[#151e32] border border-white/5 rounded-2xl p-1 flex gap-1 mb-8 overflow-x-auto w-fit">
+        <button className={`whitespace-nowrap px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'rounds' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`} onClick={() => setActiveTab('rounds')}>Rounds</button>
+        <button className={`whitespace-nowrap px-6 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'matches' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`} onClick={() => setActiveTab('matches')}>Matches</button>
       </div>
 
       {activeTab === 'rounds' && (
-        <div>
+        <div className="grid gap-4">
           {rounds.map(r => (
-            <div key={r.slug} className="card" style={{ marginBottom: 12 }}>
-              <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700 }}>{r.name}</div>
-                  <div style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>
-                    {r.isLocked ? '🔒 Locked' : '🟢 Open'}
-                  </div>
+            <div key={r.slug} className="bg-[#151e32] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="font-bold text-white text-lg">{r.name}</div>
+                <div className={`text-xs font-bold mt-1 ${r.isLocked ? 'text-red-500' : 'text-green-500'}`}>
+                  {r.isLocked ? '🔒 LOCKED' : '🟢 OPEN'}
                 </div>
-                <button className="btn btn-ghost btn-sm" onClick={() => lockRound(r.slug, !r.isLocked)}>
-                  {r.isLocked ? '🔓 Unlock' : '🔒 Lock'}
-                </button>
               </div>
+              <button className={`px-4 py-2 rounded-lg font-bold text-sm ${r.isLocked ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30' : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'} transition-colors`} onClick={() => lockRound(r.slug, !r.isLocked)}>
+                {r.isLocked ? '🔓 UNLOCK' : '🔒 LOCK'}
+              </button>
             </div>
           ))}
         </div>
       )}
 
       {activeTab === 'matches' && (
-        <div>
+        <div className="grid gap-4">
           {matches.map(m => (
-            <div key={m.id} className="card" style={{ marginBottom: 10 }}>
-              <div className="card-body">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <span>{m.homeFlag}</span>
-                  <div style={{ flex: 1, fontWeight: 700 }}>{m.homeTeam} vs {m.awayTeam}</div>
-                  <span>{m.awayFlag}</span>
-                  <span className={`status-pill status-${m.status}`}>{m.status}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setMatchStatus(m.id, 'scheduled')} disabled={m.status === 'scheduled'}>Scheduled</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setMatchStatus(m.id, 'live')} disabled={m.status === 'live'}>Live</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setMatchStatus(m.id, 'completed')} disabled={m.status === 'completed'}>Completed</button>
-                </div>
-                {m.status === 'completed' && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                    <input type="number" min="0" max="20" className="score-input" style={{ width: 48, height: 40, fontSize: '1rem' }}
-                      value={resultInputs[m.id]?.home ?? m.homeScore ?? ''}
-                      onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
-                    <span style={{ color: 'var(--muted)', fontWeight: 700 }}>–</span>
-                    <input type="number" min="0" max="20" className="score-input" style={{ width: 48, height: 40, fontSize: '1rem' }}
-                      value={resultInputs[m.id]?.away ?? m.awayScore ?? ''}
-                      onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
-                    <button className="btn btn-primary btn-sm" onClick={() => setResult(m.id)}>Save Result</button>
-                  </div>
-                )}
+            <div key={m.id} className="bg-[#151e32] border border-white/5 rounded-xl p-4">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="text-2xl">{m.homeFlag}</span>
+                <div className="flex-1 font-bold text-white text-center">{m.homeTeam} vs {m.awayTeam}</div>
+                <span className="text-2xl">{m.awayFlag}</span>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${m.status==='completed'?'bg-slate-500/20 text-slate-400':m.status==='live'?'bg-red-500/20 text-red-500 animate-pulse':'bg-green-500/20 text-green-500'}`}>{m.status}</span>
               </div>
+              <div className="flex gap-2 flex-wrap mb-4 justify-center">
+                <button className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${m.status==='scheduled'?'bg-white/10 text-white':'bg-white/5 text-slate-400 hover:bg-white/10'}`} onClick={() => setMatchStatus(m.id, 'scheduled')}>Scheduled</button>
+                <button className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${m.status==='live'?'bg-white/10 text-white':'bg-white/5 text-slate-400 hover:bg-white/10'}`} onClick={() => setMatchStatus(m.id, 'live')}>Live</button>
+                <button className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${m.status==='completed'?'bg-white/10 text-white':'bg-white/5 text-slate-400 hover:bg-white/10'}`} onClick={() => setMatchStatus(m.id, 'completed')}>Completed</button>
+              </div>
+              {m.status === 'completed' && (
+                <div className="flex gap-4 items-center justify-center bg-black/20 p-4 rounded-xl">
+                  <input type="number" min="0" max="20" className="w-12 h-12 bg-black/40 border border-white/10 rounded-lg text-center font-black text-white text-xl focus:border-[#FFD700] outline-none"
+                    value={resultInputs[m.id]?.home ?? m.homeScore ?? ''}
+                    onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
+                  <span className="text-slate-500 font-black">—</span>
+                  <input type="number" min="0" max="20" className="w-12 h-12 bg-black/40 border border-white/10 rounded-lg text-center font-black text-white text-xl focus:border-[#FFD700] outline-none"
+                    value={resultInputs[m.id]?.away ?? m.awayScore ?? ''}
+                    onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
+                  <button className="bg-[#FFD700] hover:bg-[#e6c200] text-black font-black px-4 py-3 rounded-lg text-sm transition-all ml-4" onClick={() => setResult(m.id)}>Save Result</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
