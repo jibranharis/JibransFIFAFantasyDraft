@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -24,14 +25,24 @@ app.use(express.json());
 // Trust the Render reverse proxy so secure cookies work
 app.set('trust proxy', 1);
 
+const MONGO_URI = process.env.MONGO_URI;
+
 app.use(session({
-  secret: 'futbol-is-life-secret-2026',
+  secret: process.env.SESSION_SECRET || 'futbol-is-life-secret-2026',
   resave: false,
   saveUninitialized: false,
+  // Persist sessions in MongoDB if available, otherwise fallback to memory
+  store: MONGO_URI ? MongoStore.create({
+    mongoUrl: MONGO_URI,
+    collectionName: 'sessions',
+    ttl: 30 * 24 * 60 * 60, // 30 days in seconds
+    autoRemove: 'native',
+  }) : undefined,
   cookie: {
     secure: isProd,
     httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000
+    sameSite: isProd ? 'none' : 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days in ms
   }
 }));
 

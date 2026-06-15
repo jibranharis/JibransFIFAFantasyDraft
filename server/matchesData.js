@@ -1440,5 +1440,20 @@ export const matchSeeds = [
     "home_score": null,
     "away_score": null,
     "group_name": null
+  },
+  {
+    "id": 104,
+    "home_team": "TBD",
+    "away_team": "TBD",
+    "home_flag": "🌍",
+    "away_flag": "🌍",
+    "stage": "third_place",
+    "match_day": 1,
+    "scheduled_at": "2026-07-18T21:00:00.000Z",
+    "status": "scheduled",
+    "home_score": null,
+    "away_score": null,
+    "group_name": null
   }
 ];
+

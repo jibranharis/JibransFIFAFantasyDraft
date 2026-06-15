@@ -346,8 +346,8 @@ function HomePage() {
               </div>
             ) : recentCompleted.map(m => (
               <div key={m.id} style={{ padding: '12px 16px', borderBottom: '1px solid hsl(var(--border) / 0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: 'hsl(var(--foreground))', fontSize: '0.875rem' }}>
-                  {m.homeFlag} {getAbbr(m.homeTeam)} vs {getAbbr(m.awayTeam)} {m.awayFlag}
+                <span style={{ fontWeight: 600, color: 'hsl(var(--foreground))', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {m.homeFlagUrl ? <img src={m.homeFlagUrl} alt={m.homeFlag} style={{ width: 16 }} /> : m.homeFlag} {getAbbr(m.homeTeam)} vs {getAbbr(m.awayTeam)} {m.awayFlagUrl ? <img src={m.awayFlagUrl} alt={m.awayFlag} style={{ width: 16 }} /> : m.awayFlag}
                 </span>
                 <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.8rem' }}>
                   {m.userPrediction?.homeScore}–{m.userPrediction?.awayScore}
@@ -409,7 +409,11 @@ function MatchCard({ match }) {
 
       <div className="match-card-teams">
         <div className="match-team">
-          <span className="match-team-flag">{match.homeFlag || '🏳️'}</span>
+          {match.homeFlagUrl ? (
+            <img src={match.homeFlagUrl} alt={match.homeFlag} className="match-team-flag" style={{ width: '2em', height: '1.5em', objectFit: 'cover', borderRadius: '2px' }} />
+          ) : (
+            <span className="match-team-flag">{match.homeFlag || '🏳️'}</span>
+          )}
           <span className="match-team-code">{getAbbr(match.homeTeam)}</span>
           <span className="match-team-name">{match.homeTeam}</span>
         </div>
@@ -430,7 +434,11 @@ function MatchCard({ match }) {
         </div>
 
         <div className="match-team">
-          <span className="match-team-flag">{match.awayFlag || '🏳️'}</span>
+          {match.awayFlagUrl ? (
+            <img src={match.awayFlagUrl} alt={match.awayFlag} className="match-team-flag" style={{ width: '2em', height: '1.5em', objectFit: 'cover', borderRadius: '2px' }} />
+          ) : (
+            <span className="match-team-flag">{match.awayFlag || '🏳️'}</span>
+          )}
           <span className="match-team-code">{getAbbr(match.awayTeam)}</span>
           <span className="match-team-name">{match.awayTeam}</span>
         </div>
@@ -709,7 +717,11 @@ function PredictionsPage() {
                 <div className="pred-teams">
                   <div className="pred-team-side home">
                     <span className="pred-team-code">{getAbbr(match.homeTeam)}</span>
-                    <span className="pred-team-flag">{match.homeFlag}</span>
+                    {match.homeFlagUrl ? (
+                      <img src={match.homeFlagUrl} alt={match.homeFlag} className="pred-team-flag" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
+                    ) : (
+                      <span className="pred-team-flag">{match.homeFlag}</span>
+                    )}
                   </div>
 
                   <div className="pred-score-center">
@@ -742,7 +754,11 @@ function PredictionsPage() {
                   </div>
 
                   <div className="pred-team-side away">
-                    <span className="pred-team-flag">{match.awayFlag}</span>
+                    {match.awayFlagUrl ? (
+                      <img src={match.awayFlagUrl} alt={match.awayFlag} className="pred-team-flag" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
+                    ) : (
+                      <span className="pred-team-flag">{match.awayFlag}</span>
+                    )}
                     <span className="pred-team-code">{getAbbr(match.awayTeam)}</span>
                   </div>
                 </div>
@@ -1085,9 +1101,9 @@ function AdminPage() {
           {matches.map(m => (
             <div key={m.id} className="card" style={{ padding: '16px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <span style={{ fontSize: '1.5rem' }}>{m.homeFlag}</span>
+                {m.homeFlagUrl ? <img src={m.homeFlagUrl} alt={m.homeFlag} style={{ width: 24 }} /> : <span style={{ fontSize: '1.5rem' }}>{m.homeFlag}</span>}
                 <div style={{ flex: 1, fontWeight: 700, color: 'hsl(var(--foreground))' }}>{m.homeTeam} vs {m.awayTeam}</div>
-                <span style={{ fontSize: '1.5rem' }}>{m.awayFlag}</span>
+                {m.awayFlagUrl ? <img src={m.awayFlagUrl} alt={m.awayFlag} style={{ width: 24 }} /> : <span style={{ fontSize: '1.5rem' }}>{m.awayFlag}</span>}
                 <span style={{ fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: m.status==='completed'?'rgba(148,163,184,0.15)':m.status==='live'?'rgba(239,68,68,0.15)':'rgba(34,197,94,0.15)', color: m.status==='completed'?'hsl(var(--muted-foreground))':m.status==='live'?'#f87171':'hsl(142 71% 45%)' }}>{m.status}</span>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>

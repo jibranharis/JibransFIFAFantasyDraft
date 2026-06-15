@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { matches, predictions, isMatchLocked } from '../db.js';
+import { getFlagSvgUrl } from '../flagCodes.js';
 
 const router = Router();
 
@@ -11,6 +12,8 @@ function formatMatch(match, prediction) {
     awayTeam: match.away_team,
     homeFlag: match.home_flag,
     awayFlag: match.away_flag,
+    homeFlagUrl: getFlagSvgUrl(match.home_team),
+    awayFlagUrl: getFlagSvgUrl(match.away_team),
     stage: match.stage,
     matchDay: match.match_day,
     scheduledAt: match.scheduled_at,
