@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 
-import './db.js'; // initializes data on startup
+import { connectDB } from './db.js'; // initializes data on startup
 import authRoutes from './routes/auth.js';
 import matchRoutes from './routes/matches.js';
 import predictionRoutes from './routes/predictions.js';
@@ -54,6 +54,8 @@ if (isProd && existsSync(distPath)) {
   app.get('*', (req, res) => res.sendFile(join(distPath, 'index.html')));
 }
 
-app.listen(PORT, () => {
-  console.log(`🏆 Jibran's FIFA Fantasy Draft running on http://localhost:${PORT}`);
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🏆 Jibran's FIFA Fantasy Draft running on http://localhost:${PORT}`);
+  });
 });

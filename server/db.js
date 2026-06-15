@@ -1,42 +1,72 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, 'data.json');
+const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/futbol";
+const client = new MongoClient(uri);
+let db;
 
-function load() {
-  if (!existsSync(DB_PATH)) return defaultData();
-  try { return JSON.parse(readFileSync(DB_PATH, 'utf8')); }
-  catch { return defaultData(); }
+let data = { users: [], sessions: [], matches: [], rounds: [], predictions: [], arenas: [], arena_members: [] };
+
+export async function connectDB() {
+  if (!process.env.MONGO_URI) {
+     console.log('⚠️ No MONGO_URI provided. Running in volatile memory mode for local dev.');
+     seed();
+     return;
+  }
+  
+  try {
+    await client.connect();
+    db = client.db();
+    const col = db.collection('app_data');
+    const dataDoc = await col.findOne({ _id: 'main' });
+    
+    if (!dataDoc) {
+      console.log('🌱 Initializing new MongoDB database...');
+      await col.insertOne({ _id: 'main', ...data });
+      seed();
+    } else {
+      console.log('✅ Loaded existing data from MongoDB');
+      data = { ...data, ...dataDoc };
+    }
+  } catch (err) {
+    console.error('❌ MongoDB Connection Error:', err);
+    process.exit(1);
+  }
 }
 
-function defaultData() {
-  return { users: [], sessions: [], matches: [], rounds: [], predictions: [], arenas: [], arena_members: [] };
+function save() {
+  if (db) {
+    // Save state to MongoDB
+    const { _id, ...saveData } = data; // don't save the _id inside the data object
+    db.collection('app_data').updateOne({ _id: 'main' }, { $set: saveData }).catch(console.error);
+  }
 }
 
-function save(data) {
-  writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-}
-
-// Live data store
-let data = load();
-
-// Generic collection helpers
+// Generic collection helpers (Sync API for easy routing)
 function col(name) {
   return {
-    all: () => data[name],
-    find: (fn) => data[name].filter(fn),
-    get: (fn) => data[name].find(fn),
-    insert: (item) => { data[name].push(item); save(data); return item; },
-    update: (fn, patch) => {
-      data[name] = data[name].map(r => fn(r) ? { ...r, ...patch } : r);
-      save(data); return data[name].find(fn);
+    all: () => data[name] || [],
+    find: (fn) => (data[name] || []).filter(fn),
+    get: (fn) => (data[name] || []).find(fn),
+    insert: (item) => { 
+      if(!data[name]) data[name]=[]; 
+      data[name].push(item); 
+      save(); 
+      return item; 
     },
-    delete: (fn) => { data[name] = data[name].filter(r => !fn(r)); save(data); },
-    count: (fn) => (fn ? data[name].filter(fn) : data[name]).length,
+    update: (fn, patch) => {
+      if(!data[name]) data[name]=[];
+      data[name] = data[name].map(r => fn(r) ? { ...r, ...patch } : r);
+      save(); 
+      return data[name].find(fn);
+    },
+    delete: (fn) => { 
+      if(!data[name]) data[name]=[]; 
+      data[name] = data[name].filter(r => !fn(r)); 
+      save(); 
+    },
+    count: (fn) => fn ? (data[name] || []).filter(fn).length : (data[name] || []).length,
   };
 }
 
@@ -108,8 +138,6 @@ function seed() {
   }
 }
 
-seed();
-
 // Helper: get round slug for a match
 export function getRoundSlug(match) {
   if (match.match_day === 1) return 'group_stage_1';
@@ -118,7 +146,6 @@ export function getRoundSlug(match) {
 }
 
 // Helper: is a match locked for predictions? (3 hours before kickoff)
-// Admin bypasses this entirely
 export function isMatchLocked(match) {
   const lockTime = new Date(match.scheduled_at).getTime() - (3 * 60 * 60 * 1000);
   return Date.now() >= lockTime;
