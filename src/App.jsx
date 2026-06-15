@@ -2,7 +2,21 @@ import { useState, useEffect, createContext, useContext, useCallback, useMemo } 
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 
-const formatMatch = m => ({ ...m, homeTeam: m.home_team, awayTeam: m.away_team, homeFlag: m.home_flag, awayFlag: m.away_flag, homeScore: m.home_score, awayScore: m.away_score, groupName: m.group_name, scheduledAt: m.scheduled_at, matchDay: m.match_day })
+function getFlagUrl(emoji) {
+  if (!emoji) return null;
+  const overrides = { '🏴󠁧󠁢󠁳󠁣󠁴󠁿': 'gb-sct', '🏴󠁧󠁢󠁥󠁮󠁧󠁿': 'gb-eng', '🏴󠁧󠁢󠁷󠁬󠁳󠁿': 'gb-wls' };
+  if (overrides[emoji]) return `https://flagcdn.com/w40/${overrides[emoji]}.png`;
+  if (emoji.length < 4) return null;
+  const a = emoji.codePointAt(0);
+  const b = emoji.codePointAt(2);
+  if (a >= 0x1F1E6 && a <= 0x1F1FF && b >= 0x1F1E6 && b <= 0x1F1FF) {
+    const code = String.fromCharCode(a - 0x1F1E6 + 97) + String.fromCharCode(b - 0x1F1E6 + 97);
+    return `https://flagcdn.com/w40/${code}.png`;
+  }
+  return null;
+}
+
+const formatMatch = m => ({ ...m, homeTeam: m.home_team, awayTeam: m.away_team, homeFlag: m.home_flag, awayFlag: m.away_flag, homeFlagUrl: getFlagUrl(m.home_flag), awayFlagUrl: getFlagUrl(m.away_flag), homeScore: m.home_score, awayScore: m.away_score, groupName: m.group_name, scheduledAt: m.scheduled_at, matchDay: m.match_day })
 import './design.css'
 
 // ============================================================
