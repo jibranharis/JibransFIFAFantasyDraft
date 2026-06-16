@@ -1049,6 +1049,103 @@ button { cursor: pointer; font: inherit; }
   font-weight: 700;
 }
 
+/* ============================================================
+   RESULT ROWS (UserResultsPage)
+   ============================================================ */
+
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  gap: 16px;
+}
+
+.result-teams {
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.result-scores {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.result-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.result-score-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.result-score-val {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+}
+
+.result-pts {
+  font-weight: 900;
+  font-size: 1.1rem;
+  min-width: 48px;
+  text-align: right;
+}
+
+.result-pts span {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.result-hidden {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: hsl(var(--muted) / 0.5);
+  padding: 6px 12px;
+  border-radius: 6px;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .result-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .result-teams {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .result-scores {
+    width: 100%;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.02);
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .result-hidden {
+    width: 100%;
+  }
+}
+
 .pred-locked-score {
   display: flex;
   align-items: center;

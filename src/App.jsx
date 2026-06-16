@@ -1231,8 +1231,8 @@ function UserResultsPage() {
             const canView = isMe || matchStarted || myPredsMap[p.match_id]
 
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-                 <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div key={p.id} className="result-row">
+                 <div className="result-teams">
                    {getFlagUrl(p.matches?.home_flag) ? (
                      <img src={getFlagUrl(p.matches?.home_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
                    ) : (
@@ -1248,20 +1248,22 @@ function UserResultsPage() {
                    )}
                  </div>
                  {canView ? (
-                   <>
-                     <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                       Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
+                   <div className="result-scores">
+                     <div className="result-score-block">
+                       <span className="result-score-label">Predicted</span>
+                       <strong className="result-score-val">{p.home_score}-{p.away_score}</strong>
                      </div>
-                     <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                       Actual: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.matches?.status === 'scheduled' ? '–' : `${p.matches?.home_score}-${p.matches?.away_score}`}</strong>
+                     <div className="result-score-block">
+                       <span className="result-score-label">Actual</span>
+                       <strong className="result-score-val">{p.matches?.status === 'scheduled' ? '–' : `${p.matches?.home_score}-${p.matches?.away_score}`}</strong>
                      </div>
-                     <div style={{ fontWeight: 900, fontSize: '1.1rem', color: p.points === null ? 'hsl(var(--muted-foreground))' : ptColor }}>
-                       {p.points === null ? '-' : `+${p.points}`} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>pts</span>
+                     <div className="result-pts" style={{ color: p.points === null ? 'hsl(var(--muted-foreground))' : ptColor }}>
+                       {p.points === null ? '-' : `+${p.points}`} <span>pts</span>
                      </div>
-                   </>
+                   </div>
                  ) : (
-                   <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6, background: 'hsl(var(--muted) / 0.5)', padding: '6px 12px', borderRadius: 6, flex: 1, justifyContent: 'center' }}>
-                     <span style={{ fontSize: '0.75rem' }}>🔒</span> Make your prediction first to reveal
+                   <div className="result-hidden">
+                     <span style={{ fontSize: '0.75rem' }}>🔒</span> Predict to see score
                    </div>
                  )}
               </div>
