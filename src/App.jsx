@@ -1408,26 +1408,25 @@ function AdminPage() {
   useEffect(() => { load() }, [])
 
   const setResult = async (matchId) => {
-    const r = resultInputs[matchId]
-    if (!r) return
+    const r = resultInputs[matchId] || {}
+    const m = matches.find(x => x.id === matchId)
+    if (!m) return
     try {
-      const updates = {}
-      if (r.home !== undefined && r.away !== undefined && r.home !== '' && r.away !== '') {
-        updates.home_score = parseInt(r.home)
-        updates.away_score = parseInt(r.away)
-      }
-      if (r.date !== undefined) {
-        updates.scheduled_at = new Date(r.date).toISOString()
-      }
-      if (r.status !== undefined) {
-        updates.status = r.status
+      const newHome = r.home !== undefined ? r.home : (m.homeScore ?? 0)
+      const newAway = r.away !== undefined ? r.away : (m.awayScore ?? 0)
+      const newStatus = r.status !== undefined ? r.status : m.status
+      const newDate = r.date !== undefined ? r.date : m.scheduledAt
+
+      const updates = {
+        home_score: parseInt(newHome) || 0,
+        away_score: parseInt(newAway) || 0,
+        status: newStatus,
+        scheduled_at: newDate ? new Date(newDate).toISOString() : m.scheduledAt
       }
       
-      if (Object.keys(updates).length > 0) {
-        await supabase.from('matches').update(updates).eq('id', matchId)
-        toast('success', 'Match updated!')
-        load()
-      }
+      await supabase.from('matches').update(updates).eq('id', matchId)
+      toast('success', 'Match updated!')
+      load()
     } catch (err) {
       toast('error', 'Failed', err.message)
     }
@@ -1501,9 +1500,9 @@ function AdminPage() {
                 </select>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.home ?? m.homeScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
+                  <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.home ?? m.homeScore ?? 0} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} />
                   <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 700 }}>–</span>
-                  <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.away ?? m.awayScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
+                  <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.away ?? m.awayScore ?? 0} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} />
                 </div>
                 
                 <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Save Updates</button>
