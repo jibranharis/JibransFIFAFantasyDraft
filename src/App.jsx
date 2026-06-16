@@ -848,11 +848,22 @@ function PredictionsPage() {
                         />
                       </div>
                     ) : (
-                      <div className="pred-score-display">
-                        {match.userPrediction ? `${match.userPrediction.homeScore}–${match.userPrediction.awayScore}` : '–'}
+                      <div className="pred-score-display" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        {match.status !== 'scheduled' ? (
+                          <>
+                            <div style={{ fontSize: '1.25rem' }}>{match.homeScore ?? 0}–{match.awayScore ?? 0}</div>
+                            {match.userPrediction && (
+                              <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, marginTop: 2, textTransform: 'uppercase' }}>
+                                Pick: {match.userPrediction.homeScore}-{match.userPrediction.awayScore}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ fontSize: '1.25rem' }}>{match.userPrediction ? `${match.userPrediction.homeScore}–${match.userPrediction.awayScore}` : '–'}</div>
+                        )}
                       </div>
                     )}
-                    <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, letterSpacing: '0.1em' }}>
+                    <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, letterSpacing: '0.1em', marginTop: 4 }}>
                       {match.status === 'completed' ? 'FT' : match.status === 'live' ? '🔴 LIVE' : ''}
                     </div>
                   </div>
