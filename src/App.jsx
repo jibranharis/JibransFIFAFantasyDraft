@@ -1387,10 +1387,22 @@ function AdminPage() {
   const { toast } = useToast()
 
   const load = () => Promise.all([
-    supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => r.data || []),
+    supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => (r.data || []).map(formatMatch)),
     Promise.resolve([]),
-    supabase.from('profiles').select('id, display_name, email, predictions(match_id, home_score, away_score)').then(r => {
-      return (r.data || []).map(u => ({ id: u.id, username: u.display_name || 'User', email: u.email || 'No email', predictions: u.predictions.map(p => ({ matchId: p.match_id, homeScore: p.home_score, awayScore: p.away_score })) }))
+    supabase.from('profiles').select('id, display_name, email, predictions(id, match_id, home_score, away_score, points, matches(home_team, away_team))').then(r => {
+      return (r.data || []).map(u => ({ 
+        id: u.id, 
+        username: u.display_name || 'User', 
+        email: u.email || 'No email', 
+        predictions: u.predictions.map(p => ({ 
+          id: p.id, 
+          matchId: p.match_id, 
+          homeScore: p.home_score, 
+          awayScore: p.away_score, 
+          points: p.points, 
+          match: { homeTeam: p.matches?.home_team, awayTeam: p.matches?.away_team } 
+        })) 
+      }))
     })
   ]).then(([m, r, p]) => { setMatches(m); setRounds(r); setAllPredictions(p); })
   useEffect(() => { load() }, [])
@@ -1407,11 +1419,22 @@ function AdminPage() {
 
   const setResult = async (matchId) => {
     const r = resultInputs[matchId]
-    if (!r || r.home === undefined || r.away === undefined) return
+    if (!r) return
     try {
-      await supabase.from('matches').update({ home_score: parseInt(r.home), away_score: parseInt(r.away) }).eq('id', matchId)
-      toast('success', 'Result saved! Points calculated.')
-      load()
+      const updates = {}
+      if (r.home !== undefined && r.away !== undefined && r.home !== '' && r.away !== '') {
+        updates.home_score = parseInt(r.home)
+        updates.away_score = parseInt(r.away)
+      }
+      if (r.date !== undefined) {
+        updates.scheduled_at = new Date(r.date).toISOString()
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('matches').update(updates).eq('id', matchId)
+        toast('success', 'Match updated!')
+        load()
+      }
     } catch (err) {
       toast('error', 'Failed', err.message)
     }
@@ -1480,16 +1503,20 @@ function AdminPage() {
                   <button key={s} className="btn-ghost" style={{ fontSize: '0.75rem', padding: '4px 12px', background: m.status===s?'rgba(255,255,255,0.1)':'transparent' }} onClick={() => setMatchStatus(m.id, s)} disabled={m.status===s}>{s}</button>
                 ))}
               </div>
-              {m.status === 'completed' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                  <input type="number" min="0" max="20" className="score-input"
-                    value={resultInputs[m.id]?.home ?? m.homeScore ?? ''}
-                    onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
-                  <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 700 }}>–</span>
-                  <input type="number" min="0" max="20" className="score-input"
-                    value={resultInputs[m.id]?.away ?? m.awayScore ?? ''}
-                    onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
-                  <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Save Result</button>
+              {m.status === 'completed' ? (
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
+                  <input type="datetime-local" className="score-input" style={{ width: 'auto', padding: '0 12px', fontSize: '0.875rem' }} value={resultInputs[m.id]?.date ?? new Date(new Date(m.scheduledAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], date: e.target.value } }))} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.home ?? m.homeScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
+                    <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 700 }}>–</span>
+                    <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.away ?? m.awayScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
+                  </div>
+                  <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Save Updates</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
+                  <input type="datetime-local" className="score-input" style={{ width: 'auto', padding: '0 12px', fontSize: '0.875rem' }} value={resultInputs[m.id]?.date ?? new Date(new Date(m.scheduledAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], date: e.target.value } }))} />
+                  <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Update Kickoff Time</button>
                 </div>
               )}
             </div>
