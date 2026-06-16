@@ -1209,7 +1209,7 @@ function UserResultsPage() {
   const title = isMe ? "My Results" : `${targetUser?.display_name || 'Player'}'s Results`
 
   return (
-    <div style={{ padding: '32px', maxWidth: 900, margin: '0 auto' }}>
+    <div className="page-wrapper" style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">{title}</h1>
         <p className="page-subtitle">{isMe ? "Your historical prediction accuracy." : "Historical prediction accuracy."}</p>
@@ -1220,7 +1220,7 @@ function UserResultsPage() {
           <p>Make predictions and wait for matches to complete to see your stats.</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card result-card">
           {history.map(p => {
             const isExact = p.home_score === p.matches?.home_score && p.away_score === p.matches?.away_score
             const isOutcome = !isExact && p.points > 0

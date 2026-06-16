@@ -1053,6 +1053,10 @@ button { cursor: pointer; font: inherit; }
    RESULT ROWS (UserResultsPage)
    ============================================================ */
 
+.result-card {
+  padding: 24px;
+}
+
 .result-row {
   display: flex;
   align-items: center;
@@ -1068,7 +1072,7 @@ button { cursor: pointer; font: inherit; }
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .result-scores {
@@ -1125,6 +1129,9 @@ button { cursor: pointer; font: inherit; }
 }
 
 @media (max-width: 600px) {
+  .result-card {
+    padding: 16px;
+  }
   .result-row {
     flex-direction: column;
     align-items: flex-start;
