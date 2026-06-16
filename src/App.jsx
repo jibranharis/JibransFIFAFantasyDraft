@@ -841,8 +841,8 @@ function PredictionsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
-            // TEMP UNLOCK: Forcing all matches to be unlocked for testing
-            const isMatchLocked = false 
+            const lockThreshold = 60 * 60 * 1000 // 1 hour
+            const isMatchLocked = match.status === 'live' || match.status === 'completed' || (match.scheduledAt && (new Date(match.scheduledAt).getTime() - lockThreshold <= Date.now()))
 
             return (
               <div key={match.id} className="prediction-row">
