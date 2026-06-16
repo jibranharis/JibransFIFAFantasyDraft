@@ -1412,23 +1412,29 @@ function AdminPage() {
     const m = matches.find(x => x.id === matchId)
     if (!m) return
     try {
-      const newHome = r.home !== undefined ? r.home : (m.homeScore ?? 0)
-      const newAway = r.away !== undefined ? r.away : (m.awayScore ?? 0)
+      const newHome = r.home !== undefined ? r.home : (m.homeScore ?? '')
+      const newAway = r.away !== undefined ? r.away : (m.awayScore ?? '')
       const newStatus = r.status !== undefined ? r.status : m.status
       const newDate = r.date !== undefined ? r.date : m.scheduledAt
 
-      const updates = {
-        home_score: parseInt(newHome) || 0,
-        away_score: parseInt(newAway) || 0,
-        status: newStatus,
-        scheduled_at: newDate ? new Date(newDate).toISOString() : m.scheduledAt
-      }
+      const updates = { status: newStatus }
+      if (newDate) updates.scheduled_at = new Date(newDate).toISOString()
       
-      await supabase.from('matches').update(updates).eq('id', matchId)
-      toast('success', 'Match updated!')
+      if (newHome !== '') updates.home_score = parseInt(newHome)
+      else updates.home_score = null
+      
+      if (newAway !== '') updates.away_score = parseInt(newAway)
+      else updates.away_score = null
+      
+      const { data, error } = await supabase.from('matches').update(updates).eq('id', matchId).select()
+      
+      if (error) throw error
+      if (!data || data.length === 0) throw new Error("Update blocked by database security rules (RLS) or match not found.")
+      
+      toast('success', 'Match updated successfully!')
       load()
     } catch (err) {
-      toast('error', 'Failed', err.message)
+      toast('error', 'Failed to save', err.message)
     }
   }
 
