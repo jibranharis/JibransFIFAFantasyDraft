@@ -745,11 +745,20 @@ function PredictionsPage() {
   const currentRound = ROUNDS.find(r => r.slug === activeRound)
 
   const saveScore = async (matchId) => {
-    const s = scores[matchId]
-    if (s?.home === undefined || s?.away === undefined || s?.home === '' || s?.away === '') return
+    const match = matches.find(m => m.id === matchId)
+    const s = scores[matchId] || {}
+    const p = match?.userPrediction || {}
+    
+    const finalHome = s.home !== undefined ? s.home : p.homeScore
+    const finalAway = s.away !== undefined ? s.away : p.awayScore
+
+    if (finalHome === undefined || finalAway === undefined || finalHome === '' || finalAway === '') {
+      toast('error', 'You must enter both a home and away score!')
+      return
+    }
     setSaving(v => ({ ...v, [matchId]: true }))
     try {
-      const { error } = await supabase.from('predictions').upsert({ user_id: user.id, match_id: matchId, home_score: parseInt(s.home), away_score: parseInt(s.away) }, { onConflict: 'user_id,match_id' })
+      const { error } = await supabase.from('predictions').upsert({ user_id: user.id, match_id: matchId, home_score: parseInt(finalHome), away_score: parseInt(finalAway) }, { onConflict: 'user_id,match_id' })
       if (error) throw error
       toast('success', 'Prediction saved! ⚽')
     } catch (err) {
@@ -885,7 +894,7 @@ function PredictionsPage() {
                       onClick={() => saveScore(match.id)}
                       disabled={saving[match.id]}
                     >
-                      {saving[match.id] ? '...' : 'SAVE'}
+                      {saving[match.id] ? 'SAVING...' : 'SAVE'}
                     </button>
                   ) : (
                     <span style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
