@@ -371,9 +371,6 @@ function HomePage() {
             World Cup 2026 — here's how you're doing.
           </p>
         </div>
-        <Link to="/predictions" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontSize: '0.875rem', width: 'auto' }}>
-          <span>◎</span> Predictions
-        </Link>
       </div>
 
       <div style={{ background: 'linear-gradient(180deg, rgba(255,193,7,0.1) 0%, rgba(255,193,7,0.02) 100%)', border: '1px solid rgba(255,193,7,0.2)', borderRadius: 12, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -392,7 +389,6 @@ function HomePage() {
             <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{stats.predictions}/104 predicted</div>
           </div>
         </div>
-        <Link to="/predictions" className="btn-ghost" style={{ border: '1px solid hsl(var(--border))', background: 'transparent' }}>◎ Predict</Link>
       </div>
 
       {/* Stats row */}
