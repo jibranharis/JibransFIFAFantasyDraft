@@ -113,9 +113,7 @@ function SidebarContent({ onNavClick }) {
     { path: '/',           icon: <IconHome />,     label: 'Home' },
     { path: '/predictions',icon: <IconStar />,     label: 'Predictions' },
     { path: '/matches',    icon: <IconCalendar />, label: 'Schedule' },
-    { path: '/groups',     icon: <IconUsers />,    label: 'Groups' },
     { path: '/leaderboard',icon: <IconTrophy />,   label: 'Leaderboard' },
-    { path: '/arenas',     icon: <IconShield />,   label: 'Arenas' },
     ...(!user?.isAdmin && user ? [{ path: '/my-results', icon: <IconBarChart />, label: 'My Results' }] : []),
     ...(user?.isAdmin ? [{ path: '/admin', icon: <IconSettings />, label: 'Admin Panel' }] : []),
   ]
@@ -349,7 +347,6 @@ function HomePage() {
         setRecentCompleted(matchesWithPreds.filter(m => m.status === 'completed' && m.userPrediction).slice(0, 5))
         setUpcoming(matchesWithPreds.filter(m => m.status === 'scheduled').slice(0, 3))
         setTopPredictors((lb || []).map(l => ({ ...l, userId: l.user_id, username: l.display_name, totalPoints: l.total_points, exactScores: l.exact_scores, predictionsCount: l.predictions_count })).slice(0, 5))
-        setArenas(arenasData)
         const me = lb.find(p => p.user_id === user?.id)
         if (me) setStats({ rank: lb.findIndex(x => x.user_id === user?.id) + 1, totalPoints: me.total_points || 0, exactScores: me.exact_scores || 0, predictions: me.predictions_count || 0 })
       }).finally(() => setLoading(false))
@@ -417,31 +414,6 @@ function HomePage() {
             </div>
           </div>
         ))}
-      </div>
-
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.125rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', color: 'hsl(var(--foreground))', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#FFC107' }}>🛡️</span> Your Arenas
-          </h2>
-          <Link to="/arenas" style={{ fontSize: '0.75rem', color: '#FFC107', fontWeight: 700, textDecoration: 'none' }}>All arenas →</Link>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          {arenas.filter(a => a.isMember).length === 0 ? (
-            <div className="card" style={{ padding: 24, textAlign: 'center', gridColumn: '1 / -1', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-              You haven't joined any arenas yet.
-            </div>
-          ) : arenas.filter(a => a.isMember).map(a => (
-            <div key={a.id} className="card" style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--muted-foreground))', marginBottom: 8 }}>{a.name}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.5rem', fontWeight: 900, color: '#FFC107' }}>#1</span>
-                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>of {a.membersCount}</span>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginTop: 4 }}>0 pts</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -1467,10 +1439,7 @@ function AppLayout() {
           <Route path="/"            element={<HomePage />} />
           <Route path="/predictions" element={<PredictionsPage />} />
           <Route path="/matches"     element={<MatchesPage />} />
-          <Route path="/groups"      element={<GroupsPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/arenas"      element={<ArenasPage />} />
-          <Route path="/join/:code"  element={<JoinArenaPage />} />
           <Route path="/my-results"  element={<MyResultsPage />} />
           <Route path="/admin"       element={<AdminPage />} />
           <Route path="*"            element={<Navigate to="/" />} />
