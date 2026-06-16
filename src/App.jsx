@@ -1162,8 +1162,20 @@ function MyResultsPage() {
         <div className="card" style={{ padding: 24 }}>
           {history.map(p => (
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-               <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 200 }}>
-                 {p.matches?.home_flag} {getAbbr(p.matches?.home_team)} <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400, margin: '0 8px' }}>vs</span> {getAbbr(p.matches?.away_team)} {p.matches?.away_flag}
+               <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
+                 {getFlagUrl(p.matches?.home_flag) ? (
+                   <img src={getFlagUrl(p.matches?.home_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
+                 ) : (
+                   <span>{p.matches?.home_flag}</span>
+                 )}
+                 {getAbbr(p.matches?.home_team)}
+                 <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>vs</span>
+                 {getAbbr(p.matches?.away_team)}
+                 {getFlagUrl(p.matches?.away_flag) ? (
+                   <img src={getFlagUrl(p.matches?.away_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
+                 ) : (
+                   <span>{p.matches?.away_flag}</span>
+                 )}
                </div>
                <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
                  Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
