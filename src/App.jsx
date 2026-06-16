@@ -732,17 +732,18 @@ function PredictionsPage() {
   const [savedSuccessfully, setSavedSuccessfully] = useState(false)
   const saveAllScores = async () => {
     const toUpsert = []
-    let incomplete = false
     
     for (const match of roundMatches) {
       const matchId = match.id
       const s = scores[matchId] || {}
-      const p = match.userPrediction || {}
       
-      const finalHome = s.home !== undefined && s.home !== '' ? s.home : p.homeScore
-      const finalAway = s.away !== undefined && s.away !== '' ? s.away : p.awayScore
+      // Permanently lock: if already predicted, skip
+      if (match.userPrediction) continue;
       
-      if (finalHome !== undefined && finalAway !== undefined && finalHome !== null && finalAway !== null) {
+      const finalHome = s.home
+      const finalAway = s.away
+      
+      if (finalHome !== undefined && finalAway !== undefined && finalHome !== '' && finalAway !== '') {
         let points = null
         if (match.status === 'completed' || match.status === 'live') {
           const hp = parseInt(finalHome); const ap = parseInt(finalAway);
@@ -759,19 +760,10 @@ function PredictionsPage() {
           away_score: parseInt(finalAway),
           points
         })
-      } else {
-        incomplete = true
       }
     }
 
-    if (incomplete) {
-      toast('error', 'Incomplete Predictions', 'Please enter a score for every match in this round before saving.')
-      return
-    }
-
     if (toUpsert.length === 0) {
-      toast('success', 'Saved — your predictions are locked in.')
-      setSavedSuccessfully(true)
       return
     }
 
@@ -779,6 +771,14 @@ function PredictionsPage() {
     try {
       const { error } = await supabase.from('predictions').upsert(toUpsert, { onConflict: 'user_id,match_id' })
       if (error) throw error
+      
+      // Instantly lock saved matches in the UI
+      setMatches(prev => prev.map(m => {
+        const u = toUpsert.find(x => x.match_id === m.id)
+        if (u) return { ...m, userPrediction: { homeScore: u.home_score, awayScore: u.away_score } }
+        return m
+      }))
+      
       toast('success', 'Saved — your predictions are locked in.')
       setSavedSuccessfully(true)
     } catch (err) {
@@ -826,9 +826,9 @@ function PredictionsPage() {
           <span style={{ fontSize: '1.25rem' }}>ℹ️</span> How it Works
         </h3>
         <p style={{ fontSize: '0.875rem', color: 'hsl(var(--foreground))', margin: 0, lineHeight: 1.5, opacity: 0.9 }}>
-          Predict the exact final score. <strong>Predictions lock exactly 1 hour before kickoff.</strong><br/>
-          Earn points for guessing the exact score, or guessing the correct outcome (winner/draw).<br/>
-          <strong style={{ color: '#FFC107' }}>Points scale up significantly in knockout rounds!</strong> Check the <Link to="/how-to-play" style={{ color: '#60a5fa', textDecoration: 'underline' }}>How to Play</Link> page for the full scoring table.
+          Predict the exact final score. <strong>Once you hit save, your prediction is locked permanently.</strong><br/>
+          You don't have to predict all games at once. Only games you've filled out will be saved and locked.<br/>
+          <strong style={{ color: '#FFC107' }}>You cannot see other people's predictions for a match until you lock in your own.</strong> Points scale up significantly in knockout rounds! Check the <Link to="/how-to-play" style={{ color: '#60a5fa', textDecoration: 'underline' }}>How to Play</Link> page.
         </p>
       </div>
 
@@ -887,7 +887,7 @@ function PredictionsPage() {
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
             const lockThreshold = 60 * 60 * 1000 // 1 hour
-            const isMatchLocked = match.status === 'live' || match.status === 'completed' || (match.scheduledAt && (new Date(match.scheduledAt).getTime() - lockThreshold <= Date.now()))
+            const isMatchLocked = !!match.userPrediction || match.status === 'live' || match.status === 'completed' || (match.scheduledAt && (new Date(match.scheduledAt).getTime() - lockThreshold <= Date.now()))
 
             return (
               <div key={match.id} className="prediction-row">
@@ -1185,18 +1185,23 @@ function UserResultsPage() {
   const [history, setHistory] = useState([])
   const [targetUser, setTargetUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [myPredsMap, setMyPredsMap] = useState({})
 
   useEffect(() => {
     if (!targetId) return
     setLoading(true)
     Promise.all([
-      supabase.from('predictions').select('*, matches(*)').eq('user_id', targetId).not('points', 'is', null).order('updated_at', { ascending: false }),
-      supabase.from('profiles').select('display_name').eq('id', targetId).single()
-    ]).then(([preds, profile]) => {
+      supabase.from('predictions').select('*, matches(*)').eq('user_id', targetId).order('updated_at', { ascending: false }),
+      supabase.from('profiles').select('display_name').eq('id', targetId).single(),
+      user ? supabase.from('predictions').select('match_id').eq('user_id', user.id) : Promise.resolve({ data: [] })
+    ]).then(([preds, profile, myRes]) => {
       setHistory(preds.data || [])
       setTargetUser(profile.data)
+      const m = {}
+      ;(myRes.data || []).forEach(p => m[p.match_id] = true)
+      setMyPredsMap(m)
     }).finally(() => setLoading(false))
-  }, [targetId])
+  }, [targetId, user?.id])
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
 
@@ -1221,6 +1226,10 @@ function UserResultsPage() {
             const isOutcome = !isExact && p.points > 0
             const ptColor = isExact ? 'hsl(142 71% 45%)' : isOutcome ? '#FFC107' : 'hsl(var(--muted-foreground))'
             
+            const isMe = user?.id === targetId
+            const matchStarted = p.matches?.status === 'completed' || p.matches?.status === 'live'
+            const canView = isMe || matchStarted || myPredsMap[p.match_id]
+
             return (
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
                  <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1238,15 +1247,23 @@ function UserResultsPage() {
                      <span>{p.matches?.away_flag}</span>
                    )}
                  </div>
-                 <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                   Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
-                 </div>
-                 <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                   Actual: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.matches?.home_score}-{p.matches?.away_score}</strong>
-                 </div>
-                 <div style={{ fontWeight: 900, fontSize: '1.1rem', color: ptColor }}>
-                   +{p.points} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>pts</span>
-                 </div>
+                 {canView ? (
+                   <>
+                     <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                       Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
+                     </div>
+                     <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                       Actual: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.matches?.status === 'scheduled' ? '–' : `${p.matches?.home_score}-${p.matches?.away_score}`}</strong>
+                     </div>
+                     <div style={{ fontWeight: 900, fontSize: '1.1rem', color: p.points === null ? 'hsl(var(--muted-foreground))' : ptColor }}>
+                       {p.points === null ? '-' : `+${p.points}`} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>pts</span>
+                     </div>
+                   </>
+                 ) : (
+                   <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6, background: 'hsl(var(--muted) / 0.5)', padding: '6px 12px', borderRadius: 6, flex: 1, justifyContent: 'center' }}>
+                     <span style={{ fontSize: '0.75rem' }}>🔒</span> Make your prediction first to reveal
+                   </div>
+                 )}
               </div>
             )
           })}
