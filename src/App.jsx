@@ -71,6 +71,19 @@ const STAGE_ORDER = {
   'final': 7
 }
 
+const getPointsForStage = (stage) => {
+  switch(stage) {
+    case 'group_stage': return { outcome: 1, exact: 3 }
+    case 'round_of_32': return { outcome: 2, exact: 5 }
+    case 'round_of_16': return { outcome: 3, exact: 7 }
+    case 'quarter_finals': return { outcome: 5, exact: 10 }
+    case 'third_place': return { outcome: 5, exact: 10 }
+    case 'semi_finals': return { outcome: 7, exact: 15 }
+    case 'final': return { outcome: 10, exact: 20 }
+    default: return { outcome: 1, exact: 3 }
+  }
+}
+
 // ============================================================
 // Toasts
 // ============================================================
@@ -734,8 +747,9 @@ function PredictionsPage() {
         if (match.status === 'completed' || match.status === 'live') {
           const hp = parseInt(finalHome); const ap = parseInt(finalAway);
           const hm = match.homeScore ?? 0; const am = match.awayScore ?? 0;
-          if (hp === hm && ap === am) points = 3;
-          else if (Math.sign(hp - ap) === Math.sign(hm - am)) points = 1;
+          const stagePts = getPointsForStage(match.stage);
+          if (hp === hm && ap === am) points = stagePts.exact;
+          else if (Math.sign(hp - ap) === Math.sign(hm - am)) points = stagePts.outcome;
           else points = 0;
         }
         toUpsert.push({
@@ -812,8 +826,9 @@ function PredictionsPage() {
           <span style={{ fontSize: '1.25rem' }}>ℹ️</span> How it Works
         </h3>
         <p style={{ fontSize: '0.875rem', color: 'hsl(var(--foreground))', margin: 0, lineHeight: 1.5, opacity: 0.9 }}>
-          Predict the exact final score for every match. <strong>Predictions lock exactly 1 hour before kickoff.</strong><br/>
-          Earn <strong style={{ color: 'hsl(142 71% 45%)' }}>3 points</strong> for the exact score, or <strong style={{ color: '#FFC107' }}>1 point</strong> for guessing the correct outcome (winner/draw).
+          Predict the exact final score. <strong>Predictions lock exactly 1 hour before kickoff.</strong><br/>
+          Earn points for guessing the exact score, or guessing the correct outcome (winner/draw).<br/>
+          <strong style={{ color: '#FFC107' }}>Points scale up significantly in knockout rounds!</strong> Check the <Link to="/how-to-play" style={{ color: '#60a5fa', textDecoration: 'underline' }}>How to Play</Link> page for the full scoring table.
         </p>
       </div>
 
@@ -1201,34 +1216,40 @@ function UserResultsPage() {
         </div>
       ) : (
         <div className="card" style={{ padding: 24 }}>
-          {history.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-               <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
-                 {getFlagUrl(p.matches?.home_flag) ? (
-                   <img src={getFlagUrl(p.matches?.home_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
-                 ) : (
-                   <span>{p.matches?.home_flag}</span>
-                 )}
-                 {getAbbr(p.matches?.home_team)}
-                 <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>vs</span>
-                 {getAbbr(p.matches?.away_team)}
-                 {getFlagUrl(p.matches?.away_flag) ? (
-                   <img src={getFlagUrl(p.matches?.away_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
-                 ) : (
-                   <span>{p.matches?.away_flag}</span>
-                 )}
-               </div>
-               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                 Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
-               </div>
-               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                 Actual: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.matches?.home_score}-{p.matches?.away_score}</strong>
-               </div>
-               <div style={{ fontWeight: 900, fontSize: '1.1rem', color: p.points===3 ? 'hsl(142 71% 45%)' : p.points===1 ? '#FFC107' : 'hsl(var(--muted-foreground))' }}>
-                 +{p.points} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>pts</span>
-               </div>
-            </div>
-          ))}
+          {history.map(p => {
+            const isExact = p.home_score === p.matches?.home_score && p.away_score === p.matches?.away_score
+            const isOutcome = !isExact && p.points > 0
+            const ptColor = isExact ? 'hsl(142 71% 45%)' : isOutcome ? '#FFC107' : 'hsl(var(--muted-foreground))'
+            
+            return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                 <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
+                   {getFlagUrl(p.matches?.home_flag) ? (
+                     <img src={getFlagUrl(p.matches?.home_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
+                   ) : (
+                     <span>{p.matches?.home_flag}</span>
+                   )}
+                   {getAbbr(p.matches?.home_team)}
+                   <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>vs</span>
+                   {getAbbr(p.matches?.away_team)}
+                   {getFlagUrl(p.matches?.away_flag) ? (
+                     <img src={getFlagUrl(p.matches?.away_flag)} alt="" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
+                   ) : (
+                     <span>{p.matches?.away_flag}</span>
+                   )}
+                 </div>
+                 <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                   Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
+                 </div>
+                 <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                   Actual: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.matches?.home_score}-{p.matches?.away_score}</strong>
+                 </div>
+                 <div style={{ fontWeight: 900, fontSize: '1.1rem', color: ptColor }}>
+                   +{p.points} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>pts</span>
+                 </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1257,18 +1278,70 @@ function HowToPlayPage() {
         <div style={{ height: 1, background: 'hsl(var(--border) / 0.5)' }} />
 
         <div>
-          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', marginBottom: 16 }}>🏆 Scoring System</h2>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', marginBottom: 16 }}>📈 Scaling Points System</h2>
+          <p style={{ color: 'hsl(var(--muted-foreground))', lineHeight: 1.6, marginBottom: 16 }}>
+            The stakes get higher as the tournament progresses. Knockout matches are worth significantly more points!
+          </p>
+          <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid hsl(var(--border) / 0.5)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)', color: 'hsl(var(--muted-foreground))', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 700 }}>Tournament Stage</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#FFC107' }}>Correct Outcome</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, color: 'hsl(142 71% 45%)' }}>Exact Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))' }}>Group Stage</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+1</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+3</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))' }}>Round of 32</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+2</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+5</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))' }}>Round of 16</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+3</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+7</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))' }}>Quarterfinals & Third Place</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+5</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+10</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))' }}>Semifinals</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+7</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 700 }}>+15</td>
+                </tr>
+                <tr style={{ background: 'rgba(255,193,7,0.05)' }}>
+                  <td style={{ padding: '12px 16px', color: 'hsl(var(--foreground))', fontWeight: 900 }}>Final</td>
+                  <td style={{ padding: '12px 16px', color: '#FFC107', fontWeight: 900, fontSize: '1.1rem' }}>+10</td>
+                  <td style={{ padding: '12px 16px', color: 'hsl(142 71% 45%)', fontWeight: 900, fontSize: '1.1rem' }}>+20</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'hsl(var(--border) / 0.5)' }} />
+
+        <div>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', marginBottom: 16 }}>🏆 Score Types</h2>
           <div style={{ display: 'grid', gap: 16 }}>
             <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', padding: 16, borderRadius: 8 }}>
-              <div style={{ fontWeight: 900, color: 'hsl(142 71% 45%)', marginBottom: 4 }}>Exact Score (3 Points)</div>
+              <div style={{ fontWeight: 900, color: 'hsl(142 71% 45%)', marginBottom: 4 }}>Exact Score</div>
               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>You correctly guessed the exact scoreline. (e.g. You predicted 2-1, and the final score was 2-1).</div>
             </div>
             <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', padding: 16, borderRadius: 8 }}>
-              <div style={{ fontWeight: 900, color: '#FFC107', marginBottom: 4 }}>Correct Outcome (1 Point)</div>
+              <div style={{ fontWeight: 900, color: '#FFC107', marginBottom: 4 }}>Correct Outcome</div>
               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>You didn't get the exact score, but you guessed the correct winner, or correctly guessed it would be a draw. (e.g. You predicted 2-0, and the final score was 1-0).</div>
             </div>
             <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', padding: 16, borderRadius: 8 }}>
-              <div style={{ fontWeight: 900, color: '#f87171', marginBottom: 4 }}>Wrong (0 Points)</div>
+              <div style={{ fontWeight: 900, color: '#f87171', marginBottom: 4 }}>Wrong</div>
               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>You guessed the wrong winner entirely. (e.g. You predicted 1-0, but the away team won 0-2).</div>
             </div>
           </div>
