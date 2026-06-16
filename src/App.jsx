@@ -1407,16 +1407,6 @@ function AdminPage() {
   ]).then(([m, r, p]) => { setMatches(m); setRounds(r); setAllPredictions(p); })
   useEffect(() => { load() }, [])
 
-  const setMatchStatus = async (matchId, status) => {
-    try {
-      await supabase.from('matches').update({ status }).eq('id', matchId)
-      toast('success', `Match marked as ${status}`)
-      load()
-    } catch (err) {
-      toast('error', 'Failed', err.message)
-    }
-  }
-
   const setResult = async (matchId) => {
     const r = resultInputs[matchId]
     if (!r) return
@@ -1428,6 +1418,9 @@ function AdminPage() {
       }
       if (r.date !== undefined) {
         updates.scheduled_at = new Date(r.date).toISOString()
+      }
+      if (r.status !== undefined) {
+        updates.status = r.status
       }
       
       if (Object.keys(updates).length > 0) {
@@ -1498,27 +1491,23 @@ function AdminPage() {
                 {m.awayFlagUrl ? <img src={m.awayFlagUrl} alt={m.awayFlag} style={{ width: 24 }} /> : <span style={{ fontSize: '1.5rem' }}>{m.awayFlag}</span>}
                 <span style={{ fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4, background: m.status==='completed'?'rgba(148,163,184,0.15)':m.status==='live'?'rgba(239,68,68,0.15)':'rgba(34,197,94,0.15)', color: m.status==='completed'?'hsl(var(--muted-foreground))':m.status==='live'?'#f87171':'hsl(142 71% 45%)' }}>{m.status}</span>
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                {['scheduled','live','completed'].map(s => (
-                  <button key={s} className="btn-ghost" style={{ fontSize: '0.75rem', padding: '4px 12px', background: m.status===s?'rgba(255,255,255,0.1)':'transparent' }} onClick={() => setMatchStatus(m.id, s)} disabled={m.status===s}>{s}</button>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
+                <input type="datetime-local" className="score-input" style={{ width: 'auto', padding: '0 12px', fontSize: '0.875rem' }} value={resultInputs[m.id]?.date ?? new Date(new Date(m.scheduledAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], date: e.target.value } }))} />
+                
+                <select className="score-input" style={{ width: 'auto', padding: '0 12px', fontSize: '0.875rem', textTransform: 'uppercase', fontWeight: 700 }} value={resultInputs[m.id]?.status ?? m.status} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], status: e.target.value } }))}>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="live">Live</option>
+                  <option value="completed">Completed</option>
+                </select>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.home ?? m.homeScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
+                  <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 700 }}>–</span>
+                  <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.away ?? m.awayScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
+                </div>
+                
+                <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Save Updates</button>
               </div>
-              {m.status === 'completed' ? (
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                  <input type="datetime-local" className="score-input" style={{ width: 'auto', padding: '0 12px', fontSize: '0.875rem' }} value={resultInputs[m.id]?.date ?? new Date(new Date(m.scheduledAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], date: e.target.value } }))} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.home ?? m.homeScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], home: e.target.value } }))} placeholder="0" />
-                    <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 700 }}>–</span>
-                    <input type="number" min="0" max="20" className="score-input" value={resultInputs[m.id]?.away ?? m.awayScore ?? ''} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], away: e.target.value } }))} placeholder="0" />
-                  </div>
-                  <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Save Updates</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                  <input type="datetime-local" className="score-input" style={{ width: 'auto', padding: '0 12px', fontSize: '0.875rem' }} value={resultInputs[m.id]?.date ?? new Date(new Date(m.scheduledAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={e => setResultInputs(v => ({ ...v, [m.id]: { ...v[m.id], date: e.target.value } }))} />
-                  <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => setResult(m.id)}>Update Kickoff Time</button>
-                </div>
-              )}
             </div>
           ))}
         </div>
