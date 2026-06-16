@@ -358,7 +358,8 @@ function HomePage() {
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
 
-  const nextGame = upcoming[0]
+  const futureGames = upcoming.filter(m => new Date(m.scheduledAt).getTime() - 60 * 60 * 1000 > new Date().getTime())
+  const nextGame = futureGames[0]
   const nextDeadline = nextGame ? new Date(nextGame.scheduledAt).getTime() - 60 * 60 * 1000 : null
 
   return (
@@ -382,12 +383,12 @@ function HomePage() {
           <div style={{ color: '#FFC107', fontSize: '1.5rem' }}>⏱️</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--foreground))', marginBottom: 6 }}>
-              {nextDeadline && nextDeadline > new Date().getTime() ? (
+              {nextDeadline ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  Next prediction due in: <CountdownTimer deadline={nextDeadline} />
+                  Next prediction locks in: <CountdownTimer deadline={nextDeadline} />
                 </div>
               ) : (
-                <span>Group Stage predictions are open!</span>
+                <span>No upcoming matches to predict.</span>
               )}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>{stats.predictions}/104 predicted</div>
@@ -915,6 +916,7 @@ function PredictionsPage() {
                     </div>
                   ) : (
                     <div className={['pred-locked-score', getAccuracyClass(match)].filter(Boolean).join(' ')}>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.6, marginRight: 2 }}>🔒</span>
                       {match.userPrediction ? `${match.userPrediction.homeScore} - ${match.userPrediction.awayScore}` : '–'}
                     </div>
                   )}
