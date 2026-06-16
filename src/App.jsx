@@ -114,7 +114,7 @@ function SidebarContent({ onNavClick }) {
     { path: '/predictions',icon: <IconStar />,     label: 'Predictions' },
     { path: '/matches',    icon: <IconCalendar />, label: 'Schedule' },
     { path: '/leaderboard',icon: <IconTrophy />,   label: 'Leaderboard' },
-    ...(!user?.isAdmin && user ? [{ path: '/my-results', icon: <IconBarChart />, label: 'My Results' }] : []),
+    ...(!user?.isAdmin && user ? [{ path: '/results', icon: <IconBarChart />, label: 'My Results' }] : []),
     ...(user?.isAdmin ? [{ path: '/admin', icon: <IconSettings />, label: 'Admin Panel' }] : []),
   ]
 
@@ -1003,7 +1003,7 @@ function LeaderboardPage() {
                           </span>
                         </td>
                         <td style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ fontWeight: 700, color: 'hsl(var(--foreground))', fontSize: '1rem' }}>{p.username}</span>
+                          <Link to={`/results/${p.userId}`} style={{ fontWeight: 700, color: 'hsl(var(--foreground))', fontSize: '1rem', textDecoration: 'none' }} className="hover-underline">{p.username}</Link>
                           {isMe && <span style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontSize: '0.6rem', fontWeight: 900, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>You</span>}
                         </td>
                         <td style={{ padding: '20px 24px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{p.predictionsCount}</td>
@@ -1131,27 +1131,38 @@ function GroupsPage() {
 }
 
 // ============================================================
-// My Results page
+// User Results page
 // ============================================================
-function MyResultsPage() {
+function UserResultsPage() {
   const { user } = useAuth()
+  const { userId } = useParams()
+  const targetId = userId || user?.id
   const [history, setHistory] = useState([])
+  const [targetUser, setTargetUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user?.id) return
-    supabase.from('predictions').select('*, matches(*)').eq('user_id', user.id).not('points', 'is', null).order('updated_at', { ascending: false }).then(({data}) => {
-      setHistory(data || [])
+    if (!targetId) return
+    setLoading(true)
+    Promise.all([
+      supabase.from('predictions').select('*, matches(*)').eq('user_id', targetId).not('points', 'is', null).order('updated_at', { ascending: false }),
+      supabase.from('profiles').select('display_name').eq('id', targetId).single()
+    ]).then(([preds, profile]) => {
+      setHistory(preds.data || [])
+      setTargetUser(profile.data)
     }).finally(() => setLoading(false))
-  }, [user?.id])
+  }, [targetId])
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
+
+  const isMe = targetId === user?.id
+  const title = isMe ? "My Results" : `${targetUser?.display_name || 'Player'}'s Results`
 
   return (
     <div style={{ padding: '32px', maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">My Results</h1>
-        <p className="page-subtitle">Your historical prediction accuracy.</p>
+        <h1 className="page-title">{title}</h1>
+        <p className="page-subtitle">{isMe ? "Your historical prediction accuracy." : "Historical prediction accuracy."}</p>
       </div>
       {history.length === 0 ? (
         <div className="empty-state">
@@ -1573,7 +1584,8 @@ function AppLayout() {
           <Route path="/predictions" element={<PredictionsPage />} />
           <Route path="/matches"     element={<MatchesPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/my-results"  element={<MyResultsPage />} />
+          <Route path="/results"     element={<UserResultsPage />} />
+          <Route path="/results/:userId" element={<UserResultsPage />} />
           <Route path="/admin"       element={<AdminPage />} />
           <Route path="/how-to-play" element={<HowToPlayPage />} />
           <Route path="*"            element={<Navigate to="/" />} />
