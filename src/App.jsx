@@ -372,9 +372,9 @@ function HomePage() {
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
 
-  const futureGames = upcoming.filter(m => new Date(m.scheduledAt).getTime() - 60 * 60 * 1000 > new Date().getTime())
+  const futureGames = upcoming.filter(m => new Date(m.scheduledAt).getTime() - 30 * 60 * 1000 > new Date().getTime())
   const nextGame = futureGames[0]
-  const nextDeadline = nextGame ? new Date(nextGame.scheduledAt).getTime() - 60 * 60 * 1000 : null
+  const nextDeadline = nextGame ? new Date(nextGame.scheduledAt).getTime() - 30 * 60 * 1000 : null
 
   return (
     <div style={{ padding: '32px', maxWidth: 1024, margin: '0 auto' }}>
@@ -889,7 +889,7 @@ function PredictionsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
-            const lockThreshold = 60 * 60 * 1000 // 1 hour
+            const lockThreshold = 30 * 60 * 1000 // 30 mins
             const isMatchLocked = !!match.userPrediction || match.status === 'live' || match.status === 'completed' || (match.scheduledAt && (new Date(match.scheduledAt).getTime() - lockThreshold <= Date.now()))
 
             return (
@@ -1293,7 +1293,7 @@ function HowToPlayPage() {
         <div>
           <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', marginBottom: 8 }}>🎯 Making Predictions</h2>
           <p style={{ color: 'hsl(var(--muted-foreground))', lineHeight: 1.6 }}>
-            For every match in the tournament, you must predict the exact final score. Predictions for a match lock exactly one hour before the match kicks off. Once locked, you can no longer change your prediction!
+            For every match in the tournament, you must predict the exact final score. Predictions for a match lock exactly 30 minutes before the match kicks off. Once locked, you can no longer change your prediction!
           </p>
         </div>
         
