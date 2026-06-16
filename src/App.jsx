@@ -720,18 +720,20 @@ function PredictionsPage() {
 
   const [isSavingAll, setIsSavingAll] = useState(false)
 
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false)
   const saveAllScores = async () => {
     const toUpsert = []
+    let incomplete = false
     
     for (const match of roundMatches) {
       const matchId = match.id
       const s = scores[matchId] || {}
       const p = match.userPrediction || {}
       
-      const finalHome = s.home !== undefined ? s.home : p.homeScore
-      const finalAway = s.away !== undefined ? s.away : p.awayScore
+      const finalHome = s.home !== undefined && s.home !== '' ? s.home : p.homeScore
+      const finalAway = s.away !== undefined && s.away !== '' ? s.away : p.awayScore
       
-      if (finalHome !== undefined && finalAway !== undefined && finalHome !== '' && finalAway !== '') {
+      if (finalHome !== undefined && finalAway !== undefined && finalHome !== null && finalAway !== null) {
         let points = null
         if (match.status === 'completed' || match.status === 'live') {
           const hp = parseInt(finalHome); const ap = parseInt(finalAway);
@@ -747,11 +749,19 @@ function PredictionsPage() {
           away_score: parseInt(finalAway),
           points
         })
+      } else {
+        incomplete = true
       }
     }
 
+    if (incomplete) {
+      toast('error', 'Incomplete Predictions', 'Please enter a score for every match in this round before saving.')
+      return
+    }
+
     if (toUpsert.length === 0) {
-      toast('success', 'Predictions saved! ⚽')
+      toast('success', 'Saved — your predictions are locked in.')
+      setSavedSuccessfully(true)
       return
     }
 
@@ -759,7 +769,8 @@ function PredictionsPage() {
     try {
       const { error } = await supabase.from('predictions').upsert(toUpsert, { onConflict: 'user_id,match_id' })
       if (error) throw error
-      toast('success', 'Predictions saved! ⚽')
+      toast('success', 'Saved — your predictions are locked in.')
+      setSavedSuccessfully(true)
     } catch (err) {
       toast('error', `Failed to save: ${err.message}`)
     } finally {
@@ -768,7 +779,13 @@ function PredictionsPage() {
   }
 
   const setScore = (matchId, side, val) => {
-    setScores(v => ({ ...v, [matchId]: { ...v[matchId], [side]: val } }))
+    if (val === '') {
+      setScores(v => ({ ...v, [matchId]: { ...v[matchId], [side]: '' } }))
+      return
+    }
+    const num = parseInt(val)
+    if (isNaN(num) || num < 0) return
+    setScores(v => ({ ...v, [matchId]: { ...v[matchId], [side]: num } }))
   }
 
   const getAccuracyClass = (match) => {
@@ -792,6 +809,16 @@ function PredictionsPage() {
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">Predictions</h1>
         <p className="page-subtitle">Predict every score before each window locks.</p>
+      </div>
+
+      <div className="card" style={{ padding: 24, marginBottom: 32, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 900, color: '#60a5fa', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '1.25rem' }}>ℹ️</span> How it Works
+        </h3>
+        <p style={{ fontSize: '0.875rem', color: 'hsl(var(--foreground))', margin: 0, lineHeight: 1.5, opacity: 0.9 }}>
+          Predict the exact final score for every match. <strong>Predictions lock exactly 1 hour before kickoff.</strong><br/>
+          Earn <strong style={{ color: 'hsl(142 71% 45%)' }}>3 points</strong> for the exact score, or <strong style={{ color: '#FFC107' }}>1 point</strong> for guessing the correct outcome (winner/draw).
+        </p>
       </div>
 
       {/* Round tabs */}
@@ -822,13 +849,20 @@ function PredictionsPage() {
         </div>
         
         {roundMatches.length > 0 && (
-          <button 
-            className="global-save-btn" 
-            onClick={saveAllScores}
-            disabled={isSavingAll}
-          >
-            {isSavingAll ? 'Saving...' : 'Save Predictions'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {savedSuccessfully && (
+              <Link to="/leaderboard" className="btn-secondary" style={{ textDecoration: 'none', padding: '10px 16px', fontSize: '0.875rem' }}>
+                View Leaderboard
+              </Link>
+            )}
+            <button 
+              className="global-save-btn" 
+              onClick={saveAllScores}
+              disabled={isSavingAll}
+            >
+              {isSavingAll ? 'Saving...' : 'Save Predictions'}
+            </button>
+          </div>
         )}
       </div>
 
