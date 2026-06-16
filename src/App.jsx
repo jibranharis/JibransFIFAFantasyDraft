@@ -358,7 +358,10 @@ function HomePage() {
         const pMap = (myPreds || []).reduce((acc, p) => ({ ...acc, [p.match_id]: { ...p, homeScore: p.home_score, awayScore: p.away_score } }), {})
         const matchesWithPreds = matches.map(m => ({ ...m, userPrediction: pMap[m.id] }))
         
-        setRecentCompleted(matchesWithPreds.filter(m => m.status === 'completed' && m.userPrediction).slice(0, 5))
+        const completedMatches = matchesWithPreds.filter(m => m.status === 'completed' && m.userPrediction)
+        completedMatches.sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+        
+        setRecentCompleted(completedMatches.slice(0, 3))
         setUpcoming(matchesWithPreds.filter(m => m.status === 'scheduled').slice(0, 3))
         setTopPredictors((lb || []).map(l => ({ ...l, userId: l.user_id, username: l.display_name, totalPoints: l.total_points, exactScores: l.exact_scores, predictionsCount: l.predictions_count })).slice(0, 5))
         const me = lb.find(p => p.user_id === user?.id)
@@ -435,7 +438,7 @@ function HomePage() {
           <div className="card" style={{ overflow: 'hidden' }}>
             {recentCompleted.length === 0 ? (
               <div style={{ padding: 32, textAlign: 'center', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                No completed predictions yet.
+                No completed matches yet.
               </div>
             ) : recentCompleted.map(m => (
               <div key={m.id} style={{ padding: '12px 16px', borderBottom: '1px solid hsl(var(--border) / 0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
