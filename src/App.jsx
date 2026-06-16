@@ -744,32 +744,60 @@ function PredictionsPage() {
 
   const currentRound = ROUNDS.find(r => r.slug === activeRound)
 
-  const saveScore = async (matchId) => {
-    const match = matches.find(m => m.id === matchId)
-    const s = scores[matchId] || {}
-    const p = match?.userPrediction || {}
-    
-    const finalHome = s.home !== undefined ? s.home : p.homeScore
-    const finalAway = s.away !== undefined ? s.away : p.awayScore
+  const [isSavingAll, setIsSavingAll] = useState(false)
 
-    if (finalHome === undefined || finalAway === undefined || finalHome === '' || finalAway === '') {
-      toast('error', 'You must enter both a home and away score!')
+  const saveAllScores = async () => {
+    const toUpsert = []
+    
+    for (const match of roundMatches) {
+      const matchId = match.id
+      const s = scores[matchId] || {}
+      const p = match.userPrediction || {}
+      
+      const finalHome = s.home !== undefined ? s.home : p.homeScore
+      const finalAway = s.away !== undefined ? s.away : p.awayScore
+      
+      if (finalHome !== undefined && finalAway !== undefined && finalHome !== '' && finalAway !== '') {
+        toUpsert.push({
+          user_id: user.id,
+          match_id: parseInt(matchId),
+          home_score: parseInt(finalHome),
+          away_score: parseInt(finalAway)
+        })
+      }
+    }
+
+    if (toUpsert.length === 0) {
+      toast('success', 'Predictions saved! ⚽')
       return
     }
-    setSaving(v => ({ ...v, [matchId]: true }))
+
+    setIsSavingAll(true)
     try {
-      const { error } = await supabase.from('predictions').upsert({ user_id: user.id, match_id: matchId, home_score: parseInt(finalHome), away_score: parseInt(finalAway) }, { onConflict: 'user_id,match_id' })
+      const { error } = await supabase.from('predictions').upsert(toUpsert, { onConflict: 'user_id,match_id' })
       if (error) throw error
-      toast('success', 'Prediction saved! ⚽')
+      toast('success', 'Predictions saved! ⚽')
     } catch (err) {
       toast('error', `Failed to save: ${err.message}`)
     } finally {
-      setSaving(v => ({ ...v, [matchId]: false }))
+      setIsSavingAll(false)
     }
   }
 
   const setScore = (matchId, side, val) => {
     setScores(v => ({ ...v, [matchId]: { ...v[matchId], [side]: val } }))
+  }
+
+  const getAccuracyClass = (match) => {
+    if (match.status === 'scheduled' || !match.userPrediction) return ''
+    const hp = match.userPrediction.homeScore
+    const ap = match.userPrediction.awayScore
+    const ha = match.homeScore ?? 0
+    const aa = match.awayScore ?? 0
+    
+    if (hp === ha && ap === aa) return 'correct-exact'
+    if ((hp > ap && ha > aa) || (hp < ap && ha < aa) || (hp === ap && ha === aa)) return 'correct-outcome'
+    return ''
   }
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
@@ -800,12 +828,24 @@ function PredictionsPage() {
       </div>
 
       {/* Round header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', color: 'hsl(var(--foreground))' }}>
-          {currentRound?.name}
-        </h2>
-        {user?.isAdmin && (
-          <span style={{ background: 'rgba(234,179,8,0.2)', color: 'hsl(43 96% 60%)', fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(234,179,8,0.3)' }}>⚡ Admin Override</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', color: 'hsl(var(--foreground))' }}>
+            {currentRound?.name}
+          </h2>
+          {user?.isAdmin && (
+            <span style={{ background: 'rgba(234,179,8,0.2)', color: 'hsl(43 96% 60%)', fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(234,179,8,0.3)' }}>⚡ Admin Override</span>
+          )}
+        </div>
+        
+        {roundMatches.length > 0 && (
+          <button 
+            className="global-save-btn" 
+            onClick={saveAllScores}
+            disabled={isSavingAll}
+          >
+            {isSavingAll ? 'Saving...' : 'Save Predictions'}
+          </button>
         )}
       </div>
 
@@ -819,7 +859,6 @@ function PredictionsPage() {
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
             const isMatchLocked = new Date().getTime() > new Date(match.scheduledAt).getTime() - 60 * 60 * 1000
-            const canEdit = user?.isAdmin || !isMatchLocked
 
             return (
               <div key={match.id} className="prediction-row">
@@ -829,77 +868,55 @@ function PredictionsPage() {
 
                 <div className="pred-teams">
                   <div className="pred-team-side home">
-                    <span className="pred-team-code">{getAbbr(match.homeTeam)}</span>
                     {match.homeFlagUrl ? (
                       <img src={match.homeFlagUrl} alt={match.homeFlag} className="pred-team-flag" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
                     ) : (
                       <span className="pred-team-flag">{match.homeFlag}</span>
                     )}
+                    <span className="pred-team-code">{getAbbr(match.homeTeam)}</span>
                   </div>
 
-                  <div className="pred-score-center">
-                    {canEdit ? (
-                      <div className="pred-score-inputs">
-                        <input
-                          type="number" min="0" max="20"
-                          className="pred-score-input"
-                          value={s.home ?? match.userPrediction?.homeScore ?? ''}
-                          onChange={e => setScore(match.id, 'home', e.target.value)}
-                          placeholder="0"
-                        />
-                        <span className="pred-score-sep">–</span>
-                        <input
-                          type="number" min="0" max="20"
-                          className="pred-score-input"
-                          value={s.away ?? match.userPrediction?.awayScore ?? ''}
-                          onChange={e => setScore(match.id, 'away', e.target.value)}
-                          placeholder="0"
-                        />
-                      </div>
+                  <div className="pred-center">
+                    {match.status !== 'scheduled' ? (
+                      <div className="pred-center-score">{match.homeScore ?? 0}–{match.awayScore ?? 0}</div>
                     ) : (
-                      <div className="pred-score-display" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        {match.status !== 'scheduled' ? (
-                          <>
-                            <div style={{ fontSize: '1.25rem' }}>{match.homeScore ?? 0}–{match.awayScore ?? 0}</div>
-                            {match.userPrediction && (
-                              <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, marginTop: 2, textTransform: 'uppercase' }}>
-                                Pick: {match.userPrediction.homeScore}-{match.userPrediction.awayScore}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div style={{ fontSize: '1.25rem' }}>{match.userPrediction ? `${match.userPrediction.homeScore}–${match.userPrediction.awayScore}` : '–'}</div>
-                        )}
-                      </div>
+                      <div className="pred-center-pill">vs</div>
                     )}
-                    <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, letterSpacing: '0.1em', marginTop: 4 }}>
-                      {match.status === 'completed' ? 'FT' : match.status === 'live' ? '🔴 LIVE' : ''}
-                    </div>
                   </div>
 
                   <div className="pred-team-side away">
+                    <span className="pred-team-code">{getAbbr(match.awayTeam)}</span>
                     {match.awayFlagUrl ? (
                       <img src={match.awayFlagUrl} alt={match.awayFlag} className="pred-team-flag" style={{ width: '1.5em', height: '1.1em', objectFit: 'cover', borderRadius: '2px' }} />
                     ) : (
                       <span className="pred-team-flag">{match.awayFlag}</span>
                     )}
-                    <span className="pred-team-code">{getAbbr(match.awayTeam)}</span>
                   </div>
                 </div>
 
-                <div style={{ width: 80, flexShrink: 0, textAlign: 'center' }}>
-                  {canEdit ? (
-                    <button
-                      className="pred-save-btn"
-                      onClick={() => saveScore(match.id)}
-                      disabled={saving[match.id]}
-                    >
-                      {saving[match.id] ? 'SAVING...' : 'SAVE'}
-                    </button>
+                <div className="pred-right-action">
+                  {!isMatchLocked ? (
+                    <div className="pred-score-inputs">
+                      <input
+                        type="number" min="0" max="20"
+                        className="pred-score-input"
+                        value={s.home ?? match.userPrediction?.homeScore ?? ''}
+                        onChange={e => setScore(match.id, 'home', e.target.value)}
+                        placeholder="0"
+                      />
+                      <span className="pred-score-sep">–</span>
+                      <input
+                        type="number" min="0" max="20"
+                        className="pred-score-input"
+                        value={s.away ?? match.userPrediction?.awayScore ?? ''}
+                        onChange={e => setScore(match.id, 'away', e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
                   ) : (
-                    <span style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {match.userPrediction ? 'PREDICTED' : '🔒 LOCKED'}
-                    </span>
+                    <div className={['pred-locked-score', getAccuracyClass(match)].filter(Boolean).join(' ')}>
+                      {match.userPrediction ? `${match.userPrediction.homeScore} - ${match.userPrediction.awayScore}` : '–'}
+                    </div>
                   )}
                 </div>
               </div>
