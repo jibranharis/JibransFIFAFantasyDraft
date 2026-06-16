@@ -1231,15 +1231,15 @@ function ArenasPage() {
             <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'hsl(var(--foreground))', fontFamily: 'Outfit, sans-serif', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
             <div style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', marginBottom: 12 }}>{a.memberCount} member{a.memberCount !== 1 ? 's' : ''}</div>
             {a.isMember && <span style={{ fontSize: '0.625rem', background: 'rgba(34,197,94,0.2)', color: 'hsl(142 71% 45%)', fontWeight: 900, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(34,197,94,0.3)' }}>✓ Member</span>}
-            {a.isMember && a.inviteCode && (
+            {a.isMember && a.code && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: '0.625rem', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 4 }}>Invite Link</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <code style={{ flex: 1, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: 6, color: 'hsl(var(--primary))', fontFamily: 'monospace', letterSpacing: '0.05em', fontWeight: 700 }}>
-                    {window.location.origin}/join/{a.inviteCode}
+                    {window.location.origin}/join/{a.code}
                   </code>
                   <button className="btn-ghost" style={{ padding: '8px', width: 'auto' }} onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/join/${a.inviteCode}`);
+                    navigator.clipboard.writeText(`${window.location.origin}/join/${a.code}`);
                     toast('success', 'Copied to clipboard!');
                   }}>Copy</button>
                 </div>
@@ -1303,8 +1303,8 @@ function AdminPage() {
   const load = () => Promise.all([
     supabase.from('matches').select('*').order('scheduled_at', { ascending: true }).then(r => r.data || []),
     Promise.resolve([]),
-    supabase.from('profiles').select('id, display_name, predictions(match_id, home_score, away_score)').then(r => {
-      return (r.data || []).map(u => ({ id: u.id, displayName: u.display_name, predictions: u.predictions.map(p => ({ matchId: p.match_id, homeScore: p.home_score, awayScore: p.away_score })) }))
+    supabase.from('profiles').select('id, display_name, email, predictions(match_id, home_score, away_score)').then(r => {
+      return (r.data || []).map(u => ({ id: u.id, username: u.display_name || 'User', email: u.email || 'No email', predictions: u.predictions.map(p => ({ matchId: p.match_id, homeScore: p.home_score, awayScore: p.away_score })) }))
     })
   ]).then(([m, r, p]) => { setMatches(m); setRounds(r); setAllPredictions(p); })
   useEffect(() => { load() }, [])
@@ -1416,7 +1416,7 @@ function AdminPage() {
           {allPredictions.length === 0 ? (
             <div className="empty-state">No predictions found.</div>
           ) : allPredictions.map(u => (
-            <div key={u.userId} className="card" style={{ padding: '20px' }}>
+            <div key={u.id} className="card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 12 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>
                   {u.username.charAt(0).toUpperCase()}
