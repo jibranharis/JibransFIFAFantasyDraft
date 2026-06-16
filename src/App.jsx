@@ -1066,34 +1066,34 @@ function GroupsPage() {
               <div style={{ padding: '16px 24px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(var(--foreground))' }}>
                 {g.name.toUpperCase()}
               </div>
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.02)', color: 'hsl(var(--muted-foreground))', fontSize: '0.75rem' }}>
-                      <th style={{ padding: '12px 24px', textAlign: 'center', width: 40 }}>#</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Team</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>P</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>W</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>D</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32 }}>L</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 40 }}>GD</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'center', width: 40, color: '#FFC107', fontWeight: 900 }}>Pts</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 24 }}>#</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Team</th>
+                      <th style={{ padding: '12px 12px', textAlign: 'center', width: 28 }}>P</th>
+                      <th style={{ padding: '12px 12px', textAlign: 'center', width: 28 }}>W</th>
+                      <th style={{ padding: '12px 12px', textAlign: 'center', width: 28 }}>D</th>
+                      <th style={{ padding: '12px 12px', textAlign: 'center', width: 28 }}>L</th>
+                      <th style={{ padding: '12px 12px', textAlign: 'center', width: 32 }}>GD</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: 32, color: '#FFC107', fontWeight: 900 }}>Pts</th>
                     </tr>
                   </thead>
                   <tbody>
                     {g.teams.map((t, i) => (
                       <tr key={t.name} style={{ borderTop: '1px solid hsl(var(--border) / 0.5)' }}>
-                        <td style={{ padding: '16px 24px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{i + 1}</td>
-                        <td style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, color: 'hsl(var(--foreground))', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{i + 1}</td>
+                        <td style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, color: 'hsl(var(--foreground))', whiteSpace: 'nowrap' }}>
                           {t.flagUrl ? <img src={t.flagUrl} alt="" style={{ width: 24, height: 16, objectFit: 'cover', borderRadius: 2 }} /> : <span>{t.flag}</span>}
                           {t.name}
                         </td>
-                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.p}</td>
-                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.w}</td>
-                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.d}</td>
-                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.l}</td>
-                        <td style={{ padding: '16px', textAlign: 'center', color: 'hsl(var(--foreground))' }}>{t.gd > 0 ? `+${t.gd}` : t.gd}</td>
-                        <td style={{ padding: '16px 24px', textAlign: 'center', fontWeight: 900, color: '#FFC107', fontSize: '1.1rem' }}>{t.pts}</td>
+                        <td style={{ padding: '16px 12px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.p}</td>
+                        <td style={{ padding: '16px 12px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.w}</td>
+                        <td style={{ padding: '16px 12px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.d}</td>
+                        <td style={{ padding: '16px 12px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>{t.l}</td>
+                        <td style={{ padding: '16px 12px', textAlign: 'center', color: 'hsl(var(--foreground))' }}>{t.gd > 0 ? `+${t.gd}` : t.gd}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', fontWeight: 900, color: '#FFC107', fontSize: '1.1rem' }}>{t.pts}</td>
                       </tr>
                     ))}
                   </tbody>
