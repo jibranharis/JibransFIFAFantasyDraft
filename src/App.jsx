@@ -753,7 +753,7 @@ function PredictionsPage() {
       if (error) throw error
       toast('success', 'Prediction saved! ⚽')
     } catch (err) {
-      toast('error', 'Failed to save', err.message)
+      toast('error', `Failed to save: ${err.message}`)
     } finally {
       setSaving(v => ({ ...v, [matchId]: false }))
     }
