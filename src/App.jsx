@@ -152,7 +152,8 @@ function SidebarContent({ onNavClick }) {
         ))}
 
         <div className="sidebar-nav-divider">
-          <button
+          <Link
+            to="/how-to-play"
             className="sidebar-nav-link"
             onClick={() => {
               if (onNavClick) onNavClick()
@@ -160,7 +161,7 @@ function SidebarContent({ onNavClick }) {
           >
             <span className="nav-icon"><IconInfo /></span>
             How to Play
-          </button>
+          </Link>
         </div>
       </nav>
 
@@ -731,11 +732,20 @@ function PredictionsPage() {
       const finalAway = s.away !== undefined ? s.away : p.awayScore
       
       if (finalHome !== undefined && finalAway !== undefined && finalHome !== '' && finalAway !== '') {
+        let points = null
+        if (match.status === 'completed' || match.status === 'live') {
+          const hp = parseInt(finalHome); const ap = parseInt(finalAway);
+          const hm = match.homeScore ?? 0; const am = match.awayScore ?? 0;
+          if (hp === hm && ap === am) points = 3;
+          else if (Math.sign(hp - ap) === Math.sign(hm - am)) points = 1;
+          else points = 0;
+        }
         toUpsert.push({
           user_id: user.id,
           match_id: parseInt(matchId),
           home_score: parseInt(finalHome),
-          away_score: parseInt(finalAway)
+          away_score: parseInt(finalAway),
+          points
         })
       }
     }
@@ -912,7 +922,19 @@ function LeaderboardPage() {
   const { user } = useAuth()
 
   useEffect(() => {
-    supabase.from('leaderboard').select('*').order('total_points', { ascending: false }).then(r => setData((r.data || []).map(l => ({ ...l, userId: l.user_id, displayName: l.display_name, totalPoints: l.total_points, exactScores: l.exact_scores, predictionsCount: l.predictions_count })))).finally(() => setLoading(false))
+    supabase.from('leaderboard').select('*').order('total_points', { ascending: false }).then(r => {
+      const mapped = (r.data || []).map((l, i) => ({ 
+        ...l, 
+        userId: l.user_id, 
+        username: l.display_name, 
+        totalPoints: l.total_points, 
+        exactScores: l.exact_scores, 
+        predictionsCount: l.predictions_count,
+        rank: i + 1,
+        correctOutcomes: (l.total_points || 0) - ((l.exact_scores || 0) * 3) + (l.exact_scores || 0)
+      }))
+      setData(mapped)
+    }).finally(() => setLoading(false))
   }, [])
 
   if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
@@ -1112,15 +1134,92 @@ function GroupsPage() {
 // My Results page
 // ============================================================
 function MyResultsPage() {
+  const { user } = useAuth()
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase.from('predictions').select('*, matches(*)').eq('user_id', user.id).not('points', 'is', null).order('updated_at', { ascending: false }).then(({data}) => {
+      setHistory(data || [])
+    }).finally(() => setLoading(false))
+  }, [user?.id])
+
+  if (loading) return <div className="spinner-screen"><div className="spinner" /></div>
+
   return (
     <div style={{ padding: '32px', maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">My Results</h1>
         <p className="page-subtitle">Your historical prediction accuracy.</p>
       </div>
-      <div className="empty-state">
-        <div className="empty-state-icon">📈</div>
-        <p>Make predictions and wait for matches to complete to see your stats.</p>
+      {history.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">📈</div>
+          <p>Make predictions and wait for matches to complete to see your stats.</p>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 24 }}>
+          {history.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+               <div style={{ fontWeight: 700, color: 'hsl(var(--foreground))', width: 200 }}>
+                 {p.matches?.home_flag} {getAbbr(p.matches?.home_team)} <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400, margin: '0 8px' }}>vs</span> {getAbbr(p.matches?.away_team)} {p.matches?.away_flag}
+               </div>
+               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                 Predicted: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.home_score}-{p.away_score}</strong>
+               </div>
+               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
+                 Actual: <strong style={{ color: 'hsl(var(--foreground))' }}>{p.matches?.home_score}-{p.matches?.away_score}</strong>
+               </div>
+               <div style={{ fontWeight: 900, fontSize: '1.1rem', color: p.points===3 ? 'hsl(142 71% 45%)' : p.points===1 ? '#FFC107' : 'hsl(var(--muted-foreground))' }}>
+                 +{p.points} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>pts</span>
+               </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// How to Play page
+// ============================================================
+function HowToPlayPage() {
+  return (
+    <div style={{ padding: '32px', maxWidth: 800, margin: '0 auto' }}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 className="page-title">How to Play</h1>
+        <p className="page-subtitle">Rules, scoring, and how to win the World Cup 2026 bracket.</p>
+      </div>
+      
+      <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', marginBottom: 8 }}>🎯 Making Predictions</h2>
+          <p style={{ color: 'hsl(var(--muted-foreground))', lineHeight: 1.6 }}>
+            For every match in the tournament, you must predict the exact final score. Predictions for a match lock exactly one hour before the match kicks off. Once locked, you can no longer change your prediction!
+          </p>
+        </div>
+        
+        <div style={{ height: 1, background: 'hsl(var(--border) / 0.5)' }} />
+
+        <div>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.25rem', fontWeight: 900, color: 'hsl(var(--foreground))', marginBottom: 16 }}>🏆 Scoring System</h2>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', padding: 16, borderRadius: 8 }}>
+              <div style={{ fontWeight: 900, color: 'hsl(142 71% 45%)', marginBottom: 4 }}>Exact Score (3 Points)</div>
+              <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>You correctly guessed the exact scoreline. (e.g. You predicted 2-1, and the final score was 2-1).</div>
+            </div>
+            <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', padding: 16, borderRadius: 8 }}>
+              <div style={{ fontWeight: 900, color: '#FFC107', marginBottom: 4 }}>Correct Outcome (1 Point)</div>
+              <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>You didn't get the exact score, but you guessed the correct winner, or correctly guessed it would be a draw. (e.g. You predicted 2-0, and the final score was 1-0).</div>
+            </div>
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', padding: 16, borderRadius: 8 }}>
+              <div style={{ fontWeight: 900, color: '#f87171', marginBottom: 4 }}>Wrong (0 Points)</div>
+              <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>You guessed the wrong winner entirely. (e.g. You predicted 1-0, but the away team won 0-2).</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1443,6 +1542,7 @@ function AppLayout() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/my-results"  element={<MyResultsPage />} />
           <Route path="/admin"       element={<AdminPage />} />
+          <Route path="/how-to-play" element={<HowToPlayPage />} />
           <Route path="*"            element={<Navigate to="/" />} />
         </Routes>
       </div>
