@@ -889,7 +889,8 @@ function PredictionsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           {roundMatches.map(match => {
             const s = scores[match.id] || {}
-            const lockThreshold = 30 * 60 * 1000 // 30 mins
+            // Commissioner Override: Unlock the Portugal vs DR Congo game (ID 21) until exactly kickoff
+            const lockThreshold = match.id === 21 ? 0 : 30 * 60 * 1000 
             const isMatchLocked = !!match.userPrediction || match.status === 'live' || match.status === 'completed' || (match.scheduledAt && (new Date(match.scheduledAt).getTime() - lockThreshold <= Date.now()))
 
             return (
