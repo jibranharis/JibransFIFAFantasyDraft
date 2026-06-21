@@ -11,32 +11,33 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function run() {
-  const matchIds = [17, 18, 19, 20, 21, 22, 23];
-  
-  console.log('Triggering point calculations for matches:', matchIds);
+  const { data: matches, error: fetchErr } = await supabase
+    .from('matches')
+    .select('id, home_score')
+    .eq('status', 'completed');
+    
+  if (fetchErr) {
+    console.error("Error fetching matches:", fetchErr);
+    process.exit(1);
+  }
 
-  for (let id of matchIds) {
-    // Get current home score
-    const { data: match, error: fetchErr } = await supabase
-      .from('matches')
-      .select('home_score')
-      .eq('id', id)
-      .single();
-      
+  console.log('Triggering point calculations for matches:', matches.map(m => m.id));
+
+  for (let match of matches) {
     if (match && match.home_score !== null) {
       // Dummy update to trigger the database's calculate_prediction_points trigger
       const { error: updateErr } = await supabase
         .from('matches')
         .update({ home_score: match.home_score })
-        .eq('id', id);
+        .eq('id', match.id);
         
       if (updateErr) {
-        console.error(`Failed to trigger update for match ${id}:`, updateErr);
+        console.error(`Failed to trigger update for match ${match.id}:`, updateErr);
       } else {
-        console.log(`Successfully recalculated points for Match ${id}`);
+        console.log(`Successfully recalculated points for Match ${match.id}`);
       }
     } else {
-      console.log(`Match ${id} doesn't have a final score yet or wasn't found.`);
+      console.log(`Match ${match.id} doesn't have a final score yet or wasn't found.`);
     }
   }
 }
