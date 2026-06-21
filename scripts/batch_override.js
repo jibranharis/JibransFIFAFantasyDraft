@@ -10,13 +10,13 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const targetUsername = "jibran";
+const targetUsername = "jibster";
 
 const predictionsToInsert = [
   { match_id: 33, home_score: 3, away_score: 1 }, // Netherlands(home) vs Sweden(away)
+  { match_id: 34, home_score: 2, away_score: 1 }, // Germany(home) vs Ivory Coast(away)
   { match_id: 35, home_score: 0, away_score: 0 }, // Ecuador(home) vs Curaçao(away)
   { match_id: 37, home_score: 3, away_score: 0 }  // Spain(home) vs Saudi Arabia(away)
-  // Note: Germany vs Cape Verde (2-1) is not in the database because they do not play each other in the group stage.
 ];
 
 async function run() {
