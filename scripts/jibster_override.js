@@ -17,17 +17,17 @@ async function run() {
     process.exit(1);
   }
   
-  // Match 26 is Switzerland vs Bosnia
+  // Match 33 is Netherlands vs Sweden
   const { data, error } = await supabase.from('predictions').upsert({ 
     user_id: user.id, 
-    match_id: 26, 
-    home_score: 3, // Switzerland
-    away_score: 1, // Bosnia
+    match_id: 33, 
+    home_score: 3, // Netherlands
+    away_score: 1, // Sweden
     updated_at: new Date().toISOString() 
   }, { onConflict: 'user_id,match_id' });
 
   if (error) console.error(error);
-  else console.log('Successfully inserted 3-1 for jibster on Match 26');
+  else console.log('Successfully inserted 3-1 for jibster on Match 33');
 }
 
 run();

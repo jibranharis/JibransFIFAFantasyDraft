@@ -10,16 +10,13 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const targetUsername = "scity"; // Waiting for user to confirm the username
+const targetUsername = "jibran";
 
 const predictionsToInsert = [
-  { match_id: 17, home_score: 2, away_score: 1 }, // France(home) vs Senegal(away)
-  { match_id: 18, home_score: 1, away_score: 1 }, // Iraq(home) vs Norway(away)
-  { match_id: 19, home_score: 3, away_score: 0 }, // Argentina(home) vs Algeria(away)
-  { match_id: 20, home_score: 2, away_score: 1 }, // Austria(home) vs Jordan(away)
-  { match_id: 21, home_score: 3, away_score: 1 }, // Portugal(home) vs DR Congo(away)
-  { match_id: 22, home_score: 2, away_score: 1 }, // England(home) vs Croatia(away)
-  { match_id: 23, home_score: 1, away_score: 2 }  // Ghana(home) vs Panama(away) => User guessed 2-1 for Panama Ghana, meaning Panama 2, Ghana 1. Ghana is home!
+  { match_id: 33, home_score: 3, away_score: 1 }, // Netherlands(home) vs Sweden(away)
+  { match_id: 35, home_score: 0, away_score: 0 }, // Ecuador(home) vs Curaçao(away)
+  { match_id: 37, home_score: 3, away_score: 0 }  // Spain(home) vs Saudi Arabia(away)
+  // Note: Germany vs Cape Verde (2-1) is not in the database because they do not play each other in the group stage.
 ];
 
 async function run() {
