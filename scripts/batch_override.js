@@ -13,10 +13,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const targetUsername = "jibster";
 
 const predictionsToInsert = [
-  { match_id: 41, home_score: 3, away_score: 0 }, // Argentina(home) vs Austria(away)
-  { match_id: 42, home_score: 3, away_score: 0 }, // France(home) vs Iraq(away)
-  { match_id: 43, home_score: 3, away_score: 1 }, // Norway(home) vs Senegal(away)
-  { match_id: 44, home_score: 0, away_score: 2 }  // Jordan(home) vs Algeria(away) -> Algeria 2-0 Jordan
+  { match_id: 45, home_score: 3, away_score: 0 }, // Portugal(home) vs Uzbekistan(away)
+  { match_id: 46, home_score: 1, away_score: 1 }, // England(home) vs Ghana(away)
+  { match_id: 47, home_score: 0, away_score: 1 }  // Panama(home) vs Croatia(away)
 ];
 
 async function run() {
