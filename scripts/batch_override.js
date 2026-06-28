@@ -13,14 +13,17 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const targetUsername = "jibster";
 
 const predictionsToInsert = [
-  { match_id: 54, home_score: 1, away_score: 0 }, // South Africa(home) vs Korea(away)
-  { match_id: 53, home_score: 0, away_score: 3 }, // Czechia(home) vs Mexico(away)
-  { match_id: 56, home_score: 0, away_score: 2 }, // Curaçao(home) vs Ivory Coast(away)
-  { match_id: 55, home_score: 2, away_score: 1 }, // Ecuador(home) vs Germany(away)
-  { match_id: 57, home_score: 1, away_score: 0 }, // Japan(home) vs Sweden(away)
-  { match_id: 58, home_score: 1, away_score: 2 }, // Tunisia(home) vs Netherlands(away)
-  { match_id: 59, home_score: 2, away_score: 1 }, // Türkiye(home) vs United States(away)
-  { match_id: 60, home_score: 0, away_score: 0 }  // Paraguay(home) vs Australia(away)
+  { match_id: 62, home_score: 3, away_score: 0 }, // Senegal(home) vs Iraq(away)
+  { match_id: 63, home_score: 0, away_score: 0 }, // Cape Verde(home) vs Saudi Arabia(away)
+  { match_id: 64, home_score: 0, away_score: 2 }, // Uruguay(home) vs Spain(away)
+  { match_id: 66, home_score: 0, away_score: 2 }, // New Zealand(home) vs Belgium(away)
+  { match_id: 65, home_score: 3, away_score: 1 }, // Egypt(home) vs Iran(away)
+  { match_id: 67, home_score: 0, away_score: 2 }, // Panama(home) vs England(away)
+  { match_id: 68, home_score: 3, away_score: 1 }, // Croatia(home) vs Ghana(away)
+  { match_id: 69, home_score: 1, away_score: 0 }, // Colombia(home) vs Portugal(away)
+  { match_id: 70, home_score: 2, away_score: 1 }, // DR Congo(home) vs Uzbekistan(away)
+  { match_id: 71, home_score: 1, away_score: 1 }, // Algeria(home) vs Austria(away)
+  { match_id: 72, home_score: 1, away_score: 3 }  // Jordan(home) vs Argentina(away)
 ];
 
 async function run() {
