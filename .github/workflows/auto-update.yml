@@ -6,6 +6,9 @@ on:
     - cron: '0 * * * *'
   # Allow manual trigger from GitHub UI
   workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/update_scores.js'
 
 jobs:
   update-scores:

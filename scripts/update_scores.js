@@ -127,3 +127,4 @@ async function checkScores() {
 }
 
 checkScores();
+// trigger update scores
